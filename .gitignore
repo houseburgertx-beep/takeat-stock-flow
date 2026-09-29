@@ -1,0 +1,25 @@
+# Dependências
+node_modules/
+dist/
+
+# Variáveis de ambiente e segredos locais (NUNCA comitar)
+.env
+.env.local
+.env.*.local
+
+# Banco de dados SQLite local
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+data/
+
+# Logs do sistema
+*.log
+npm-debug.log*
+
+# Sistema Operacional e IDEs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

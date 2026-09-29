@@ -1,0 +1,30 @@
+{
+  "name": "takeat-stock-flow",
+  "version": "1.0.0",
+  "description": "Sistema de controle de estoque de bebidas e insumos com rastreamento de vendas e fichas técnicas integrado à Takeat API V1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "node --experimental-strip-types src/index.ts",
+    "dev": "node --watch --experimental-strip-types src/index.ts",
+    "cli": "node --experimental-strip-types src/cli.ts",
+    "test": "node --experimental-strip-types --test tests/**/*.test.ts",
+    "seed": "node --experimental-strip-types src/cli.ts seed-demo"
+  },
+  "keywords": [
+    "takeat",
+    "estoque",
+    "restaurante",
+    "ficha-tecnica",
+    "bebidas",
+    "insumos",
+    "vendas",
+    "inventory",
+    "sqlite"
+  ],
+  "author": "Takeat Stock Flow Contributors",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
