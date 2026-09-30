@@ -629,14 +629,17 @@ export function atualizarItemContagem(
   const venda = fields.venda !== undefined ? Number(fields.venda) : item.venda;
   const pos = fields.pos_venda !== undefined ? Number(fields.pos_venda) : item.pos_venda;
   const verificado = fields.verificado !== undefined ? (fields.verificado ? 1 : 0) : item.verificado;
+  const vinculos = fields.vinculos_takeat !== undefined
+    ? (typeof fields.vinculos_takeat === 'string' ? fields.vinculos_takeat : JSON.stringify(fields.vinculos_takeat))
+    : (item.vinculos_takeat || '[]');
 
   const divergencia = (pre + entrada - venda) - pos;
 
   db.prepare(`
     UPDATE contagem_itens
-    SET pre_venda = ?, entrada_estoque = ?, venda = ?, pos_venda = ?, divergencia = ?, verificado = ?
+    SET pre_venda = ?, entrada_estoque = ?, venda = ?, pos_venda = ?, divergencia = ?, verificado = ?, vinculos_takeat = ?
     WHERE id = ?
-  `).run(pre, entrada, venda, pos, divergencia, verificado, itemId);
+  `).run(pre, entrada, venda, pos, divergencia, verificado, vinculos, itemId);
 
   return db.prepare('SELECT * FROM contagem_itens WHERE id = ?').get(itemId);
 }
@@ -690,3 +693,68 @@ export function listarHistoricoContagens(db: DatabaseSync): any[] {
     LIMIT 30
   `).all();
 }
+
+export const PALAVRAS_CHAVE_BEBIDAS = [
+  'coca', 'kuat', 'fanta', 'sprite', 'guarana', 'guaraná', 'agua', 'água',
+  'cerveja', 'heineken', 'budweiser', 'amstel', 'brahma', 'skol', 'chopp',
+  'suco', 'del valle', 'red bull', 'monster', 'energético', 'energetico',
+  'refrigerante', 'lata', '350ml', '600ml', '1l', '2l', 'pet', 'long neck',
+  'vinho', 'gin', 'vodka', 'h2oh', 'schweppes', 'tonica', 'tônica', 'ice'
+];
+
+export function isBebidaNomeOuCategoria(nome: string, categoria?: string): boolean {
+  const str = `${nome || ''} ${categoria || ''}`.toLowerCase();
+  return PALAVRAS_CHAVE_BEBIDAS.some(k => str.includes(k));
+}
+
+export function getBebidasTakeatCatalog(db: DatabaseSync): Array<{
+  id: number;
+  nome: string;
+  tipo: 'PRODUTO' | 'COMPLEMENTO';
+  categoria: string;
+  preco: number;
+}> {
+  const produtos = getAllProdutos(db);
+  const complementos = getAllComplementos(db);
+
+  const lista: Array<{
+    id: number;
+    nome: string;
+    tipo: 'PRODUTO' | 'COMPLEMENTO';
+    categoria: string;
+    preco: number;
+  }> = [];
+
+  for (const p of produtos) {
+    if (isBebidaNomeOuCategoria(p.nome, p.categoria_nome)) {
+      lista.push({
+        id: p.id,
+        nome: p.nome,
+        tipo: 'PRODUTO',
+        categoria: p.categoria_nome || 'Bebidas',
+        preco: p.preco || 0
+      });
+    }
+  }
+
+  for (const c of complementos) {
+    if (isBebidaNomeOuCategoria(c.nome, c.categoria_nome)) {
+      lista.push({
+        id: c.id,
+        nome: c.nome,
+        tipo: 'COMPLEMENTO',
+        categoria: c.categoria_nome || 'Opções de Bebidas',
+        preco: c.preco || 0
+      });
+    }
+  }
+
+  return lista;
+}
+
+export function vincularItensTakeat(db: DatabaseSync, itemId: number, vinculos: string[]): any {
+  const jsonStr = JSON.stringify(vinculos || []);
+  db.prepare('UPDATE contagem_itens SET vinculos_takeat = ? WHERE id = ?').run(jsonStr, itemId);
+  return db.prepare('SELECT * FROM contagem_itens WHERE id = ?').get(itemId);
+}
+

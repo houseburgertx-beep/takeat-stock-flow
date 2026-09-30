@@ -27,6 +27,8 @@ import {
   adicionarProdutoContagem,
   removerProdutoContagem,
   listarHistoricoContagens,
+  getBebidasTakeatCatalog,
+  vincularItensTakeat,
 } from '../db/database.ts';
 import { TakeatClient } from '../takeat/client.ts';
 import { SyncService } from '../services/sync.ts';
@@ -299,6 +301,26 @@ export function createWebServer(db: DatabaseSync, client: TakeatClient) {
         return sendJson(200, hist);
       }
 
+      // Lista todas as bebidas identificadas no catálogo Takeat (Produtos e Complementos)
+      if (pathname === '/api/takeat/bebidas' && req.method === 'GET') {
+        let lista = getBebidasTakeatCatalog(db);
+        // Se ainda não tiver itens no banco local e tiver chave, sincroniza o catálogo
+        if (lista.length === 0 && process.env.TAKEAT_API_KEY && process.env.TAKEAT_API_KEY !== 'tk_test_seu_token_aqui') {
+          try {
+            await syncService.syncCatalogo();
+            lista = getBebidasTakeatCatalog(db);
+          } catch (e) {}
+        }
+        return sendJson(200, lista);
+      }
+
+      // Salva vínculos manuais de produtos/complementos para uma linha da contagem
+      if (pathname === '/api/contagem/vincular' && req.method === 'POST') {
+        const body = await getBody();
+        const item = vincularItensTakeat(db, Number(body.itemId), body.vinculos || []);
+        return sendJson(200, item);
+      }
+
       if (pathname === '/api/contagem/sync-takeat' && req.method === 'POST') {
         const body = await getBody().catch(() => ({}));
         const contagemId = Number(body.contagemId);
@@ -308,6 +330,8 @@ export function createWebServer(db: DatabaseSync, client: TakeatClient) {
         const startIso = `${contagem.data}T00:00:00.000Z`;
         const endIso = `${contagem.data}T23:59:59.999Z`;
         const vendasMap = new Map<string, number>();
+        let totalProdutosVendidos = 0;
+        let totalComplementosVendidos = 0;
 
         // 1. Tenta buscar direto da API se configurada
         try {
@@ -317,8 +341,32 @@ export function createWebServer(db: DatabaseSync, client: TakeatClient) {
               if (session.status === 'canceled') continue;
               for (const order of (session.orders || [])) {
                 if (order.status === 'canceled') continue;
-                const nomeNorm = (order.product_name || '').toUpperCase().trim();
-                vendasMap.set(nomeNorm, (vendasMap.get(nomeNorm) || 0) + (order.quantity || 1));
+
+                // 1.1 PRODUTO PRINCIPAL (ex: Cerveja, Coca-Cola)
+                const prodNome = (order.product?.name || (order as any).product_name || '').toUpperCase().trim();
+                const prodQtd = Number(order.quantity || (order as any).amount || 1);
+                if (prodNome) {
+                  vendasMap.set(prodNome, (vendasMap.get(prodNome) || 0) + prodQtd);
+                  totalProdutosVendidos += prodQtd;
+                }
+
+                // 1.2 COMPLEMENTOS / ADICIONAIS DA ORDEM (ex: "Kuat 1L", "Coca Lata" escolhidos dentro de combo)
+                const compCats = order.complement_categories || [];
+                if (Array.isArray(compCats)) {
+                  for (const cat of compCats) {
+                    const orderComps = cat.order_complements || [];
+                    if (Array.isArray(orderComps)) {
+                      for (const comp of orderComps) {
+                        const compNome = (comp.complement?.name || (comp as any).name || '').toUpperCase().trim();
+                        const compQtd = Number(comp.amount || 1) * prodQtd;
+                        if (compNome) {
+                          vendasMap.set(compNome, (vendasMap.get(compNome) || 0) + compQtd);
+                          totalComplementosVendidos += compQtd;
+                        }
+                      }
+                    }
+                  }
+                }
               }
             }
           }
@@ -326,45 +374,75 @@ export function createWebServer(db: DatabaseSync, client: TakeatClient) {
           console.warn('[SyncTakeatContagem] Falha ao consultar sessões da Takeat:', err.message);
         }
 
-        // 2. Busca também dos pedidos locais
-        const pedidosLocais = db.prepare(`
-          SELECT produto_nome, SUM(quantidade) as total
-          FROM pedidos_processados
-          WHERE DATE(data_pedido) = ?
-          GROUP BY produto_nome
-        `).all(contagem.data) as any[];
+        // 2. Busca também dos pedidos locais (PRODUTOS E COMPLEMENTOS)
+        try {
+          const pedidosLocais = db.prepare(`
+            SELECT produto_nome as nome, SUM(quantidade) as total
+            FROM pedidos_processados
+            WHERE DATE(data_pedido) = ?
+            GROUP BY produto_nome
+            UNION ALL
+            SELECT pcp.complemento_nome as nome, SUM(pcp.quantidade) as total
+            FROM pedidos_complementos_processados pcp
+            JOIN pedidos_processados pp ON pp.id = pcp.pedido_processado_id
+            WHERE DATE(pp.data_pedido) = ?
+            GROUP BY pcp.complemento_nome
+          `).all(contagem.data, contagem.data) as any[];
 
-        for (const p of pedidosLocais) {
-          const nomeNorm = p.produto_nome.toUpperCase().trim();
-          if (!vendasMap.has(nomeNorm)) {
-            vendasMap.set(nomeNorm, p.total);
+          for (const p of pedidosLocais) {
+            const nomeNorm = (p.nome || '').toUpperCase().trim();
+            if (nomeNorm && !vendasMap.has(nomeNorm)) {
+              vendasMap.set(nomeNorm, p.total);
+            }
           }
-        }
+        } catch(e) {}
 
         // 3. Atualiza os itens da contagem
         const itens = db.prepare('SELECT * FROM contagem_itens WHERE contagem_id = ?').all(contagemId) as any[];
         let atualizados = 0;
 
         for (const item of itens) {
-          const itemNome = item.nome_produto.toUpperCase();
+          const itemNome = item.nome_produto.toUpperCase().trim();
           let matchQtd = 0;
 
+          // Vínculos explícitos definidos pelo usuário
+          let vinculos: string[] = [];
+          try {
+            vinculos = JSON.parse(item.vinculos_takeat || '[]');
+          } catch(e) {}
+          const vinculosUpper = vinculos.map(v => v.toUpperCase().trim());
+
           for (const [vendaNome, qtd] of vendasMap.entries()) {
-            if (vendaNome === itemNome || vendaNome.includes(itemNome) || itemNome.includes(vendaNome)) {
+            // A) Vínculo explícito cadastrado
+            if (vinculosUpper.includes(vendaNome)) {
+              matchQtd += qtd;
+              continue;
+            }
+
+            // B) Nome exatamente igual
+            if (vendaNome === itemNome) {
+              matchQtd += qtd;
+              continue;
+            }
+
+            // C) Similaridade inteligente (ex: "KUAT 1L" em "REFRIGERANTE KUAT 1L" ou "KUAT 1 LITRO")
+            const itemBase = itemNome.replace(/[^A-Z0-9]/g, '');
+            const vendaBase = vendaNome.replace(/[^A-Z0-9]/g, '');
+            if (itemBase.length >= 4 && (vendaBase === itemBase || vendaBase.includes(itemBase) || itemBase.includes(vendaBase))) {
               matchQtd += qtd;
             }
           }
 
-          if (matchQtd > 0 || vendasMap.size > 0) {
-            atualizarItemContagem(db, item.id, { venda: matchQtd });
-            atualizados++;
-          }
+          atualizarItemContagem(db, item.id, { venda: matchQtd });
+          if (matchQtd > 0) atualizados++;
         }
 
         const contagemAtualizada = getOrCreateContagemHoje(db, contagem.data);
         return sendJson(200, {
           success: true,
-          message: `${atualizados} produtos atualizados com as vendas do turno!`,
+          message: `Sincronização concluída! Vendas calculadas de produtos diretos e opções de complementos.`,
+          total_produtos: totalProdutosVendidos,
+          total_complementos: totalComplementosVendidos,
           contagem: contagemAtualizada
         });
       }

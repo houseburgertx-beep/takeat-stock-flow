@@ -166,10 +166,16 @@ export function initializeDatabase(db: DatabaseSync): void {
       divergencia REAL DEFAULT 0,
       verificado INTEGER DEFAULT 0,
       insumo_id INTEGER,
+      vinculos_takeat TEXT DEFAULT '[]', -- Lista de nomes/IDs de produtos e complementos Takeat associados
       FOREIGN KEY (contagem_id) REFERENCES contagens_diarias(id) ON DELETE CASCADE,
       UNIQUE(contagem_id, nome_produto)
     );
 
     CREATE INDEX IF NOT EXISTS idx_contagem_itens_contagem ON contagem_itens(contagem_id);
   `);
+
+  // Migrações seguras de colunas existentes
+  try {
+    db.exec("ALTER TABLE contagem_itens ADD COLUMN vinculos_takeat TEXT DEFAULT '[]';");
+  } catch (e) {}
 }

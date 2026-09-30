@@ -74,16 +74,22 @@
         </div>
 
         <div class="flex items-center gap-2">
+          <!-- Localizar Bebidas e Complementos Takeat -->
+          <button onclick="abrirModalLocalizarBebidas()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1.5" title="Localizar e importar produtos e complementos do cardápio Takeat">
+            <i data-lucide="search" class="w-3.5 h-3.5"></i>
+            <span>Localizar Bebidas (Takeat)</span>
+          </button>
+
           <!-- Sincronizar Vendas Takeat -->
           <button onclick="sincronizarVendasTakeat()" id="btn-sync-vendas" class="bg-blue-900 hover:bg-blue-800 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg transition shadow flex items-center gap-1.5">
             <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-            <span>Sincronizar Vendas Takeat</span>
+            <span>Sincronizar Vendas</span>
           </button>
 
           <!-- Adicionar Bebida / Produto -->
           <button onclick="abrirModalAddProduto()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1">
             <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-            <span>Adicionar Item</span>
+            <span>Novo Item</span>
           </button>
         </div>
       </div>
@@ -227,6 +233,72 @@
     </div>
   </div>
 
+  <!-- MODAL: LOCALIZAR BEBIDAS E COMPLEMENTOS TAKEAT -->
+  <div id="modal-localizar-bebidas" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white text-slate-900 border border-slate-300 rounded-2xl max-w-xl w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+          <i data-lucide="search" class="w-4 h-4 text-amber-600"></i> Localizar Bebidas & Complementos na Takeat
+        </h3>
+        <button onclick="fecharModalLocalizarBebidas()" class="text-slate-400 hover:text-slate-700"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <p class="text-xs text-slate-600">
+        O sistema identifica automaticamente todos os <strong>Produtos</strong> e <strong>Complementos (Opções de Combos/Pizzas)</strong> da sua loja Takeat que são bebidas.
+      </p>
+
+      <!-- Barra de Filtros e Busca -->
+      <div class="flex items-center gap-2 text-xs">
+        <input type="text" id="filtro-busca-bebidas" oninput="filtrarListaBebidasTakeat(this.value)" placeholder="Buscar por nome (ex: Coca, Kuat, Heineken)..." class="flex-1 bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-semibold focus:border-blue-700 focus:outline-none">
+        <select id="filtro-tipo-bebidas" onchange="filtrarListaBebidasTakeat(document.getElementById('filtro-busca-bebidas').value)" class="bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-semibold focus:outline-none">
+          <option value="TODOS">Todos os Tipos</option>
+          <option value="PRODUTO">Apenas Produtos</option>
+          <option value="COMPLEMENTO">Apenas Complementos</option>
+        </select>
+      </div>
+
+      <!-- Lista de Itens Detectados -->
+      <div class="max-h-72 overflow-y-auto divide-y divide-slate-200 text-xs border border-slate-200 rounded-lg p-1" id="lista-bebidas-takeat">
+        <p class="text-slate-500 py-4 text-center">Buscando bebidas no catálogo...</p>
+      </div>
+
+      <div class="flex justify-between items-center pt-2 border-t border-slate-200 text-xs">
+        <span class="text-slate-500 text-[11px]" id="total-bebidas-encontradas">0 itens encontrados</span>
+        <button onclick="fecharModalLocalizarBebidas()" class="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: VINCULAR BEBIDAS TAKEAT A UM ITEM DA FOLHA -->
+  <div id="modal-vincular-item" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white text-slate-900 border border-slate-300 rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+        <div>
+          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <i data-lucide="link" class="w-4 h-4 text-blue-700"></i> Vincular Bebidas da Takeat
+          </h3>
+          <p class="text-xs text-blue-900 font-bold mt-0.5" id="vincular-item-nome-alvo">KUAT 1L</p>
+        </div>
+        <button onclick="fecharModalVincularItem()" class="text-slate-400 hover:text-slate-700"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <p class="text-xs text-slate-600 leading-relaxed">
+        Marque quais <strong>Produtos</strong> ou <strong>Complementos (Opções de Combos)</strong> da Takeat devem ser somados nesta linha durante a contagem:
+      </p>
+
+      <input type="text" id="filtro-vincular" oninput="filtrarCheckboxVinculos(this.value)" placeholder="Filtrar bebidas..." class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-semibold focus:border-blue-700 focus:outline-none">
+
+      <div class="max-h-60 overflow-y-auto divide-y divide-slate-100 text-xs border border-slate-200 rounded-lg p-2 space-y-1.5" id="lista-checkbox-vinculos">
+        <p class="text-slate-500 py-3 text-center">Carregando lista...</p>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-200">
+        <button onclick="fecharModalVincularItem()" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancelar</button>
+        <button onclick="salvarVinculosItem()" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-blue-900 hover:bg-blue-800 text-white shadow">Salvar Vínculos</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: HISTÓRICO DE FOLHAS ANTERIORES -->
   <div id="modal-historico" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-white text-slate-900 border border-slate-300 rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
@@ -254,7 +326,9 @@
     const state = {
       contagem: null,
       debounceTimers: {},
-      isTakeatConfigured: false
+      isTakeatConfigured: false,
+      catalogoBebidas: [],
+      vincularItemId: null
     };
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -403,6 +477,11 @@
         totalVendas += Number(item.venda || 0);
         if (item.divergencia !== 0) totalDivergencias++;
 
+        let vinculos = [];
+        try {
+          vinculos = JSON.parse(item.vinculos_takeat || '[]');
+        } catch(e) {}
+
         const tr = document.createElement('tr');
         tr.className = `hover:bg-blue-50/40 transition border-b border-slate-200 ${item.verificado ? 'bg-slate-50 opacity-90' : ''}`;
 
@@ -418,9 +497,16 @@
           <!-- PRODUTO -->
           <td class="p-2 text-left font-bold text-slate-900 border-r border-slate-300 group">
             <div class="flex items-center justify-between">
-              <span class="tracking-tight uppercase">${item.nome_produto}</span>
-              <button onclick="removerItem(${item.id})" class="no-print opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-600 transition px-1 text-sm font-bold" title="Remover item">&times;</button>
+              <span class="tracking-tight uppercase font-extrabold text-xs">${item.nome_produto}</span>
+              <div class="flex items-center gap-1 no-print">
+                <button onclick="abrirModalVincularItem(${item.id})" class="text-[10px] text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded border border-blue-200 transition font-medium flex items-center gap-0.5" title="Mapear produtos e complementos da Takeat a este item">
+                  <i data-lucide="link" class="w-2.5 h-2.5"></i>
+                  <span>${vinculos.length > 0 ? vinculos.length + ' vínculos' : 'Vincular'}</span>
+                </button>
+                <button onclick="removerItem(${item.id})" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-600 transition px-1 text-sm font-bold" title="Remover item">&times;</button>
+              </div>
             </div>
+            ${vinculos.length > 0 ? `<div class="text-[10px] text-slate-500 font-normal truncate max-w-xs mt-0.5">🔗 ${vinculos.join(' + ')}</div>` : ''}
           </td>
 
           <!-- PRÉ VENDA -->
@@ -691,6 +777,197 @@
         showToast('Item removido da folha.', 'info');
       } catch (e) {
         showToast('Erro ao remover item', 'error');
+      }
+    }
+
+    // -------------------------------------------------------------
+    // LOCALIZAR E VINCULAR BEBIDAS E COMPLEMENTOS TAKEA T
+    // -------------------------------------------------------------
+    async function abrirModalLocalizarBebidas() {
+      document.getElementById('modal-localizar-bebidas').classList.remove('hidden');
+      const listaEl = document.getElementById('lista-bebidas-takeat');
+      listaEl.innerHTML = '<p class="text-slate-500 py-4 text-center">Buscando bebidas no catálogo Takeat...</p>';
+      lucide.createIcons();
+
+      try {
+        const bebidas = await fetch('/api/takeat/bebidas').then(r => r.json());
+        state.catalogoBebidas = bebidas || [];
+        renderListaBebidasTakeat(state.catalogoBebidas);
+      } catch (err) {
+        listaEl.innerHTML = '<p class="text-red-500 py-4 text-center">Erro ao buscar bebidas da Takeat.</p>';
+      }
+    }
+
+    function fecharModalLocalizarBebidas() {
+      document.getElementById('modal-localizar-bebidas').classList.add('hidden');
+    }
+
+    function filtrarListaBebidasTakeat(termo) {
+      const tipo = document.getElementById('filtro-tipo-bebidas').value;
+      const lower = (termo || '').toLowerCase().trim();
+
+      const filtrados = (state.catalogoBebidas || []).filter(b => {
+        const bateNome = !lower || b.nome.toLowerCase().includes(lower) || (b.categoria && b.categoria.toLowerCase().includes(lower));
+        const bateTipo = tipo === 'TODOS' || b.tipo === tipo;
+        return bateNome && bateTipo;
+      });
+
+      renderListaBebidasTakeat(filtrados);
+    }
+
+    function renderListaBebidasTakeat(lista) {
+      const listaEl = document.getElementById('lista-bebidas-takeat');
+      const totalEl = document.getElementById('total-bebidas-encontradas');
+      totalEl.textContent = `${lista.length} bebida(s) encontrada(s)`;
+
+      if (lista.length === 0) {
+        listaEl.innerHTML = '<p class="text-slate-500 py-4 text-center">Nenhuma bebida ou complemento encontrado com este filtro.</p>';
+        return;
+      }
+
+      listaEl.innerHTML = '';
+      const nomesNaContagem = new Set((state.contagem?.itens || []).map(i => i.nome_produto.toUpperCase()));
+
+      lista.forEach(b => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'py-2.5 px-3 flex items-center justify-between hover:bg-slate-50 transition gap-2';
+
+        const jaExiste = nomesNaContagem.has(b.nome.toUpperCase());
+        const tipoBadge = b.tipo === 'PRODUTO' 
+          ? `<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-blue-200">PRODUTO</span>`
+          : `<span class="bg-purple-100 text-purple-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-purple-200">COMPLEMENTO (COMBO)</span>`;
+
+        itemDiv.innerHTML = `
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="font-bold text-slate-800 uppercase">${b.nome}</span>
+              ${tipoBadge}
+            </div>
+            <p class="text-[11px] text-slate-500 mt-0.5">${b.categoria} &bull; R$ ${Number(b.preco || 0).toFixed(2)}</p>
+          </div>
+          <div>
+            ${jaExiste ? `
+              <span class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded border border-emerald-200 flex items-center gap-1">
+                ✓ Na Planilha
+              </span>
+            ` : `
+              <button onclick="adicionarBebidaDaTakeat('${b.nome.replace(/'/g, "\\'")}')" class="text-xs font-bold bg-blue-900 hover:bg-blue-800 text-white px-2.5 py-1 rounded shadow transition flex items-center gap-1">
+                <i data-lucide="plus" class="w-3 h-3"></i> Adicionar
+              </button>
+            `}
+          </div>
+        `;
+        listaEl.appendChild(itemDiv);
+      });
+      lucide.createIcons();
+    }
+
+    async function adicionarBebidaDaTakeat(nome) {
+      if (!state.contagem) return;
+      try {
+        await fetch('/api/contagem/adicionar-produto', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contagemId: state.contagem.id, nome })
+        });
+        await carregarContagem(state.contagem.data);
+        renderListaBebidasTakeat(state.catalogoBebidas);
+        showToast(`"${nome}" adicionado à folha!`, 'success');
+      } catch (e) {
+        showToast('Erro ao adicionar item', 'error');
+      }
+    }
+
+    // Modal de Vínculos Específicos
+    async function abrirModalVincularItem(itemId) {
+      state.vincularItemId = itemId;
+      const item = state.contagem.itens.find(i => i.id === itemId);
+      if (!item) return;
+
+      document.getElementById('vincular-item-nome-alvo').textContent = item.nome_produto;
+      document.getElementById('modal-vincular-item').classList.remove('hidden');
+
+      const listaEl = document.getElementById('lista-checkbox-vinculos');
+      listaEl.innerHTML = '<p class="text-slate-500 py-3 text-center">Carregando catálogo Takeat...</p>';
+
+      if (!state.catalogoBebidas || state.catalogoBebidas.length === 0) {
+        try {
+          state.catalogoBebidas = await fetch('/api/takeat/bebidas').then(r => r.json()) || [];
+        } catch (e) {}
+      }
+
+      renderCheckboxVinculos(item);
+      lucide.createIcons();
+    }
+
+    function fecharModalVincularItem() {
+      document.getElementById('modal-vincular-item').classList.add('hidden');
+      state.vincularItemId = null;
+    }
+
+    function renderCheckboxVinculos(item, filtro = '') {
+      const listaEl = document.getElementById('lista-checkbox-vinculos');
+      let vinculosAtuais = [];
+      try {
+        vinculosAtuais = JSON.parse(item.vinculos_takeat || '[]');
+      } catch(e) {}
+      const vinculosSet = new Set(vinculosAtuais.map(v => v.toUpperCase().trim()));
+
+      const lower = filtro.toLowerCase().trim();
+      const itensFiltrados = (state.catalogoBebidas || []).filter(b => !lower || b.nome.toLowerCase().includes(lower) || (b.categoria && b.categoria.toLowerCase().includes(lower)));
+
+      if (itensFiltrados.length === 0) {
+        listaEl.innerHTML = '<p class="text-slate-500 py-3 text-center">Nenhuma bebida compatível encontrada no catálogo.</p>';
+        return;
+      }
+
+      listaEl.innerHTML = '';
+      itensFiltrados.forEach(b => {
+        const label = document.createElement('label');
+        label.className = 'flex items-center justify-between p-2 rounded hover:bg-slate-100 cursor-pointer transition';
+
+        const isChecked = vinculosSet.has(b.nome.toUpperCase().trim());
+        const tipoBadge = b.tipo === 'PRODUTO' 
+          ? `<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Produto</span>`
+          : `<span class="bg-purple-100 text-purple-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Complemento</span>`;
+
+        label.innerHTML = `
+          <div class="flex items-center gap-2">
+            <input type="checkbox" value="${b.nome}" class="chk-vinculo w-4 h-4 text-blue-600 rounded border-slate-300" ${isChecked ? 'checked' : ''}>
+            <div>
+              <span class="font-bold text-slate-800 text-xs uppercase">${b.nome}</span>
+              <span class="text-[10px] text-slate-500 block">${b.categoria}</span>
+            </div>
+          </div>
+          <div>${tipoBadge}</div>
+        `;
+        listaEl.appendChild(label);
+      });
+    }
+
+    function filtrarCheckboxVinculos(val) {
+      if (!state.vincularItemId) return;
+      const item = state.contagem.itens.find(i => i.id === state.vincularItemId);
+      if (item) renderCheckboxVinculos(item, val);
+    }
+
+    async function salvarVinculosItem() {
+      if (!state.vincularItemId) return;
+      const checkboxes = document.querySelectorAll('.chk-vinculo:checked');
+      const selecionados = Array.from(checkboxes).map(c => c.value);
+
+      try {
+        await fetch('/api/contagem/vincular', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId: state.vincularItemId, vinculos: selecionados })
+        });
+
+        fecharModalVincularItem();
+        await carregarContagem(state.contagem.data);
+        showToast('✓ Vínculos Takeat atualizados!', 'success');
+      } catch (e) {
+        showToast('Erro ao salvar vínculos', 'error');
       }
     }
 
