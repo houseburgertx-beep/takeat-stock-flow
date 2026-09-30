@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { getTokenCache, saveTokenCache } from '../db/database.ts';
+import { getTokenCache, saveTokenCache, clearTokenCache } from '../db/database.ts';
 import type {
   TakeatTokenResponse,
   TakeatInputItem,
@@ -27,6 +27,14 @@ export class TakeatClient {
     this.baseUrl = (config.baseUrl || process.env.TAKEAT_API_URL || 'https://public-api.takeat.app').replace(/\/+$/, '');
     this.restaurantId = config.restaurantId || process.env.TAKEAT_RESTAURANT_ID;
     this.db = config.db;
+  }
+
+  setApiKey(key: string): void {
+    this.apiKey = key;
+    this.refreshPromise = null;
+    if (this.db) {
+      clearTokenCache(this.db);
+    }
   }
 
   /**

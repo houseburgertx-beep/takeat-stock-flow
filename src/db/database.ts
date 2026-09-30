@@ -510,6 +510,10 @@ export function saveTokenCache(
   `).run(access_token, refresh_token, expires_at, scope, now);
 }
 
+export function clearTokenCache(db: DatabaseSync): void {
+  db.prepare('DELETE FROM token_cache').run();
+}
+
 // ==========================================
 // SYNC LOGS
 // ==========================================

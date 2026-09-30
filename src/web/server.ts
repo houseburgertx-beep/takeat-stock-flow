@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { DatabaseSync } from 'node:sqlite';
@@ -19,6 +19,7 @@ import {
   getPedidosProcessados,
   getMovimentacoes,
   getTokenCache,
+  clearTokenCache,
   getRecentSyncLogs,
 } from '../db/database.ts';
 import { TakeatClient } from '../takeat/client.ts';
@@ -87,6 +88,40 @@ export function createWebServer(db: DatabaseSync, client: TakeatClient) {
           escopos_token: token?.scope || null,
           recent_logs: getRecentSyncLogs(db, 5),
         });
+      }
+
+      // Configuração direta da chave via interface local
+      if (pathname === '/api/config/key' && req.method === 'POST') {
+        const body = await getBody();
+        const rawKey = (body.apiKey || '').trim().replace(/^['"]|['"]$/g, '');
+
+        if (!rawKey || rawKey.length < 5) {
+          return sendJson(400, { error: 'Chave não informada ou inválida.' });
+        }
+
+        // Limpa cache de tokens antigos para forçar emissão limpa
+        clearTokenCache(db);
+
+        process.env.TAKEAT_API_KEY = rawKey;
+        client.setApiKey(rawKey);
+
+        // Atualiza o arquivo .env no disco local
+        const envPath = join(process.cwd(), '.env');
+        let envContent = existsSync(envPath) ? readFileSync(envPath, 'utf-8') : '';
+        if (envContent.includes('TAKEAT_API_KEY=')) {
+          envContent = envContent.replace(/TAKEAT_API_KEY=.*/, `TAKEAT_API_KEY=${rawKey}`);
+        } else {
+          envContent += `\nTAKEAT_API_KEY=${rawKey}\n`;
+        }
+        writeFileSync(envPath, envContent, 'utf-8');
+
+        // Testa conexão oficial com a Takeat
+        try {
+          await client.exchangeApiKeyForTokens();
+          return sendJson(200, { success: true, message: 'Chave Takeat conectada e validada com sucesso!' });
+        } catch (err: any) {
+          return sendJson(400, { error: `Takeat recusou a chave: ${err.message}` });
+        }
       }
 
       // 2. Dashboard Stats
