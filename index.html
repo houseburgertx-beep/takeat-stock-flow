@@ -1,4 +1,3 @@
-<!-- Mantém cópia sincronizada com ./index.html -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -86,6 +85,7 @@
 
     <!-- 1. ABA DASHBOARD -->
     <section id="tab-dashboard" class="space-y-6">
+      <!-- CARDS DE MÉTRICAS -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg">
           <div class="flex items-center justify-between">
@@ -151,6 +151,7 @@
 
       <!-- DUAS COLUNAS: ÚLTIMAS VENDAS E ÚLTIMAS MOVIMENTAÇÕES -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Vendas Recentes -->
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg flex flex-col">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-sm font-bold text-white flex items-center gap-2">
@@ -163,6 +164,7 @@
           </div>
         </div>
 
+        <!-- Movimentações Recentes -->
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg flex flex-col">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-sm font-bold text-white flex items-center gap-2">
@@ -192,6 +194,7 @@
           </div>
         </div>
 
+        <!-- FILTROS -->
         <div class="flex flex-col sm:flex-row gap-3 mb-4">
           <div class="relative flex-1">
             <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-slate-400"></i>
@@ -213,6 +216,7 @@
           </div>
         </div>
 
+        <!-- TABELA DE INSUMOS -->
         <div class="overflow-x-auto border border-slate-700/60 rounded-xl">
           <table class="w-full text-left border-collapse text-sm">
             <thead class="bg-slate-900/60 text-slate-400 text-xs uppercase font-semibold">
@@ -240,6 +244,7 @@
             <h2 class="text-lg font-bold text-white">Mapeamento de Fichas Técnicas (Receituário)</h2>
             <p class="text-xs text-slate-400">Defina os insumos consumidos por cada Produto ou Complemento vendido no Takeat</p>
           </div>
+          <!-- SUB-ABAS PRODUTOS VS COMPLEMENTOS -->
           <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-700">
             <button onclick="switchFichaSubTab('produtos')" id="btn-sub-produtos" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-orange-500 text-white transition">Produtos</button>
             <button onclick="switchFichaSubTab('complementos')" id="btn-sub-complementos" class="px-4 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition">Complementos (Adicionais)</button>
@@ -247,6 +252,7 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- LISTA DE ITENS DO CATÁLOGO -->
           <div class="lg:col-span-5 bg-slate-900/60 border border-slate-700/60 rounded-xl p-4 flex flex-col h-[580px]">
             <div class="mb-3 relative">
               <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-slate-400"></i>
@@ -255,6 +261,7 @@
             <div id="lista-catalogo-container" class="overflow-y-auto flex-1 space-y-2 pr-1"></div>
           </div>
 
+          <!-- EDITOR DA FICHA TÉCNICA SELECIONADA -->
           <div class="lg:col-span-7 bg-slate-900/60 border border-slate-700/60 rounded-xl p-5 flex flex-col h-[580px]" id="editor-ficha-container">
             <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
               <div>
@@ -267,6 +274,7 @@
               </button>
             </div>
 
+            <!-- ITENS DA RECEITA -->
             <div class="flex-1 overflow-y-auto space-y-3 pr-1" id="editor-ingredientes-lista">
               <div class="h-full flex flex-col items-center justify-center text-slate-500 text-xs">
                 <i data-lucide="book-marked" class="w-10 h-10 mb-2 stroke-1"></i>
@@ -274,6 +282,7 @@
               </div>
             </div>
 
+            <!-- ADICIONAR INGREDIENTE -->
             <div id="form-add-ingrediente" class="border-t border-slate-800 pt-4 mt-4 hidden">
               <div class="grid grid-cols-12 gap-2 items-center">
                 <div class="col-span-6">
@@ -362,6 +371,7 @@
     <!-- 6. ABA CONEXÃO TAKEAT -->
     <section id="tab-sync" class="space-y-6 hidden">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Status das Credenciais -->
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg space-y-4">
           <h3 class="text-base font-bold text-white flex items-center gap-2">
             <i data-lucide="key" class="w-5 h-5 text-orange-400"></i> Credenciais & OAuth Takeat
@@ -395,6 +405,7 @@
           </div>
         </div>
 
+        <!-- Sincronizadores Manuais -->
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg space-y-4">
           <h3 class="text-base font-bold text-white flex items-center gap-2">
             <i data-lucide="cloud-sync" class="w-5 h-5 text-emerald-400"></i> Sincronização Sob Demanda
@@ -555,8 +566,9 @@
     Takeat Stock Flow &copy; 2026 &bull; Integração com a Nova API V1.0 da Takeat
   </footer>
 
-  <!-- SCRIPT HÍBRIDO -->
+  <!-- SCRIPT HÍBRIDO: SUPORTA BACKEND NODE.JS LOCAL E MODO CLIENT-SIDE GITHUB PAGES -->
   <script>
+    // DADOS INICIAIS DE DEMONSTRAÇÃO
     const DEMO_STORE = {
       insumos: [
         { id: 1, codigo: 'BEB-HEIN-330', nome: 'Cerveja Heineken Long Neck 330ml', categoria: 'bebida', unidade: 'un', quantidade: 48, estoque_minimo: 24, preco_unitario: 5.80 },
@@ -657,6 +669,7 @@
       ]
     };
 
+    // Estado da Aplicação
     const state = {
       isStaticMode: false,
       insumos: [],
@@ -671,9 +684,11 @@
       insumoAjusteAlvo: null,
     };
 
+    // Inicialização Inteligente
     document.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
 
+      // Checa se está no GitHub Pages ou se a API local está acessível
       const isGitHubPages = window.location.hostname.includes('github.io');
       let apiWorks = false;
 
@@ -687,6 +702,7 @@
       }
 
       if (!apiWorks || isGitHubPages) {
+        // Ativa modo local/GitHub Pages com persistência no LocalStorage
         state.isStaticMode = true;
         document.getElementById('banner-gh-pages').classList.remove('hidden');
         document.getElementById('status-text').textContent = 'Modo Web (Demo)';
@@ -704,6 +720,9 @@
       lucide.createIcons();
     });
 
+    // -------------------------------------------------------------
+    // GESTÃO CLIENT-SIDE (LOCALSTORAGE PARA GITHUB PAGES)
+    // -------------------------------------------------------------
     function initLocalStorage() {
       if (!localStorage.getItem('takeat_insumos')) {
         localStorage.setItem('takeat_insumos', JSON.stringify(DEMO_STORE.insumos));
@@ -723,6 +742,7 @@
       state.vendas = JSON.parse(localStorage.getItem('takeat_vendas') || '[]');
       state.movimentacoes = JSON.parse(localStorage.getItem('takeat_movs') || '[]');
 
+      // Alertas
       state.alertas = state.insumos.filter(i => i.quantidade <= i.estoque_minimo && i.estoque_minimo > 0).map(i => ({
         insumo_id: i.id,
         insumo_nome: i.nome,
@@ -752,6 +772,9 @@
       popularSelectInsumos();
     }
 
+    // -------------------------------------------------------------
+    // GESTÃO COM BACKEND NODE.JS ATIVO
+    // -------------------------------------------------------------
     async function carregarTudoBackend() {
       try {
         const [dashRes, insumosRes, prodRes, compRes, vendasRes, movRes] = await Promise.all([
@@ -781,17 +804,24 @@
       try {
         const res = await fetch('/api/status').then(r => r.json());
         const badge = document.getElementById('status-badge');
+
         const keyInfo = document.getElementById('sync-info-key');
         const tokenInfo = document.getElementById('sync-info-token');
         const expiraInfo = document.getElementById('sync-info-expira');
         const escoposInfo = document.getElementById('sync-info-escopos');
 
         if (res.takeat_api_key_configurada) {
-          badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-emerald-400 font-semibold">Takeat Conectada</span>`;
+          badge.innerHTML = `
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span class="text-emerald-400 font-semibold">Takeat Conectada</span>
+          `;
           keyInfo.textContent = 'Configurada no .env';
           keyInfo.className = 'text-emerald-400 font-semibold';
         } else {
-          badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span><span class="text-amber-300 font-medium">Modo Local</span>`;
+          badge.innerHTML = `
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span class="text-amber-300 font-medium">Modo Local</span>
+          `;
           keyInfo.textContent = 'Não configurada (Modo Local)';
           keyInfo.className = 'text-amber-400';
         }
@@ -812,6 +842,9 @@
       }
     }
 
+    // -------------------------------------------------------------
+    // CONTROLES DE INTERFACE
+    // -------------------------------------------------------------
     function switchTab(tabId) {
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('bg-orange-500', 'text-white', 'shadow-md', 'shadow-orange-500/20');
@@ -845,6 +878,7 @@
       document.getElementById('metric-vendas-rastreadas').textContent = state.vendas.length;
       document.getElementById('metric-valor-estoque').textContent = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(data.valor_total_estoque || 0);
 
+      // Alertas Críticos
       const containerAlertas = document.getElementById('secao-alertas-criticos');
       const listaAlertas = document.getElementById('lista-alertas-criticos');
 
@@ -863,6 +897,7 @@
         containerAlertas.classList.add('hidden');
       }
 
+      // Vendas Recentes
       const vendasBox = document.getElementById('dashboard-ultimas-vendas');
       if (data.ultimos_pedidos && data.ultimos_pedidos.length > 0) {
         vendasBox.innerHTML = data.ultimos_pedidos.map(p => `
@@ -880,6 +915,7 @@
         `).join('');
       }
 
+      // Movimentações Recentes
       const movBox = document.getElementById('dashboard-ultimas-movimentacoes');
       if (data.ultimas_movimentacoes && data.ultimas_movimentacoes.length > 0) {
         movBox.innerHTML = data.ultimas_movimentacoes.map(m => `
@@ -901,6 +937,7 @@
       lucide.createIcons();
     }
 
+    // Tabela de Insumos
     function renderTabelaInsumos() {
       const tbody = document.getElementById('tabela-insumos-body');
       const busca = (document.getElementById('filtro-busca-insumo')?.value || '').toLowerCase();
@@ -964,6 +1001,7 @@
       lucide.createIcons();
     }
 
+    // Fichas Técnicas
     function switchFichaSubTab(sub) {
       state.fichaSubTab = sub;
       document.getElementById('btn-sub-produtos').className = sub === 'produtos'
@@ -1123,6 +1161,7 @@
         fichasMap[state.selectedItem.id] = state.selectedFichaItens;
         localStorage.setItem(key, JSON.stringify(fichasMap));
 
+        // Atualiza contadores
         state.selectedItem.tem_ficha = state.selectedFichaItens.length > 0;
         state.selectedItem.qtd_insumos = state.selectedFichaItens.length;
         const itensKey = state.fichaSubTab === 'produtos' ? 'takeat_produtos' : 'takeat_complementos';
@@ -1175,6 +1214,7 @@
       `).join('');
     }
 
+    // Tabela de Vendas
     function renderTabelaVendas() {
       const tbody = document.getElementById('tabela-vendas-body');
 
@@ -1217,6 +1257,7 @@
       `).join('');
     }
 
+    // Tabela Ledger
     function renderTabelaLedger() {
       const tbody = document.getElementById('tabela-ledger-body');
 
@@ -1251,6 +1292,7 @@
       }).join('');
     }
 
+    // Modal Ajuste de Estoque
     function abrirModalAjuste(insumoId) {
       const insumo = state.insumos.find(i => i.id === insumoId);
       if (!insumo) return;
@@ -1316,6 +1358,7 @@
       }
     }
 
+    // Modal Novo Insumo
     function abrirModalNovoInsumo() {
       document.getElementById('novo-nome').value = '';
       document.getElementById('novo-quantidade').value = '0';
@@ -1371,6 +1414,7 @@
       }
     }
 
+    // Sincronização
     async function dispararSyncInsumos() {
       if (state.isStaticMode) {
         alert('No GitHub Pages os insumos de demonstração já estão carregados localmente! Para sincronizar em tempo real com sua loja da Takeat, execute o backend local via npm start.');

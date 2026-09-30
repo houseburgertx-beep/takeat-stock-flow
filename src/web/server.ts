@@ -223,7 +223,10 @@ export function createWebServer(db: DatabaseSync, client: TakeatClient) {
       // SERVINDO ARQUIVOS ESTÁTICOS DO DASHBOARD (SPA)
       // -------------------------------------------------------------
       if (pathname === '/' || pathname === '/index.html' || !pathname.startsWith('/api')) {
-        const indexPath = join(__dirname, 'public', 'index.html');
+        let indexPath = join(__dirname, 'public', 'index.html');
+        if (!existsSync(indexPath)) {
+          indexPath = join(process.cwd(), 'index.html');
+        }
         if (existsSync(indexPath)) {
           const html = readFileSync(indexPath, 'utf-8');
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
