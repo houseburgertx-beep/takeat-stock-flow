@@ -21,6 +21,12 @@ import {
   getTokenCache,
   clearTokenCache,
   getRecentSyncLogs,
+  getOrCreateContagemHoje,
+  atualizarItemContagem,
+  atualizarCabecalhoContagem,
+  adicionarProdutoContagem,
+  removerProdutoContagem,
+  listarHistoricoContagens,
 } from '../db/database.ts';
 import { TakeatClient } from '../takeat/client.ts';
 import { SyncService } from '../services/sync.ts';
@@ -252,6 +258,115 @@ export function createWebServer(db: DatabaseSync, client: TakeatClient) {
         const { seedDemoData } = await import('../services/seed.ts');
         seedDemoData(db);
         return sendJson(200, { success: true, message: 'Dados de demonstração carregados com sucesso!' });
+      }
+
+      // =============================================================
+      // ROTAS DA CONTAGEM DIÁRIA DE ESTOQUE (PLANILHA INTELIGENTE)
+      // =============================================================
+
+      if (pathname === '/api/contagem/hoje' && req.method === 'GET') {
+        const dataQuery = parsedUrl.searchParams.get('data') || undefined;
+        const contagem = getOrCreateContagemHoje(db, dataQuery);
+        return sendJson(200, contagem);
+      }
+
+      if (pathname === '/api/contagem/item' && req.method === 'POST') {
+        const body = await getBody();
+        const item = atualizarItemContagem(db, Number(body.id), body);
+        return sendJson(200, item);
+      }
+
+      if (pathname === '/api/contagem/cabecalho' && req.method === 'POST') {
+        const body = await getBody();
+        const contagem = atualizarCabecalhoContagem(db, Number(body.contagemId), body);
+        return sendJson(200, contagem);
+      }
+
+      if (pathname === '/api/contagem/adicionar-produto' && req.method === 'POST') {
+        const body = await getBody();
+        const item = adicionarProdutoContagem(db, Number(body.contagemId), body.nome);
+        return sendJson(201, item);
+      }
+
+      const matchDelContagemItem = pathname.match(/^\/api\/contagem\/item\/(\d+)$/);
+      if (matchDelContagemItem && req.method === 'DELETE') {
+        removerProdutoContagem(db, Number(matchDelContagemItem[1]));
+        return sendJson(200, { success: true });
+      }
+
+      if (pathname === '/api/contagem/historico' && req.method === 'GET') {
+        const hist = listarHistoricoContagens(db);
+        return sendJson(200, hist);
+      }
+
+      if (pathname === '/api/contagem/sync-takeat' && req.method === 'POST') {
+        const body = await getBody().catch(() => ({}));
+        const contagemId = Number(body.contagemId);
+        const contagem = db.prepare('SELECT * FROM contagens_diarias WHERE id = ?').get(contagemId) as any;
+        if (!contagem) return sendJson(404, { error: 'Contagem não encontrada' });
+
+        const startIso = `${contagem.data}T00:00:00.000Z`;
+        const endIso = `${contagem.data}T23:59:59.999Z`;
+        const vendasMap = new Map<string, number>();
+
+        // 1. Tenta buscar direto da API se configurada
+        try {
+          if (process.env.TAKEAT_API_KEY && process.env.TAKEAT_API_KEY !== 'tk_test_seu_token_aqui') {
+            const sessions = await client.getTableSessions(startIso, endIso);
+            for (const session of sessions) {
+              if (session.status === 'canceled') continue;
+              for (const order of (session.orders || [])) {
+                if (order.status === 'canceled') continue;
+                const nomeNorm = (order.product_name || '').toUpperCase().trim();
+                vendasMap.set(nomeNorm, (vendasMap.get(nomeNorm) || 0) + (order.quantity || 1));
+              }
+            }
+          }
+        } catch (err: any) {
+          console.warn('[SyncTakeatContagem] Falha ao consultar sessões da Takeat:', err.message);
+        }
+
+        // 2. Busca também dos pedidos locais
+        const pedidosLocais = db.prepare(`
+          SELECT produto_nome, SUM(quantidade) as total
+          FROM pedidos_processados
+          WHERE DATE(data_pedido) = ?
+          GROUP BY produto_nome
+        `).all(contagem.data) as any[];
+
+        for (const p of pedidosLocais) {
+          const nomeNorm = p.produto_nome.toUpperCase().trim();
+          if (!vendasMap.has(nomeNorm)) {
+            vendasMap.set(nomeNorm, p.total);
+          }
+        }
+
+        // 3. Atualiza os itens da contagem
+        const itens = db.prepare('SELECT * FROM contagem_itens WHERE contagem_id = ?').all(contagemId) as any[];
+        let atualizados = 0;
+
+        for (const item of itens) {
+          const itemNome = item.nome_produto.toUpperCase();
+          let matchQtd = 0;
+
+          for (const [vendaNome, qtd] of vendasMap.entries()) {
+            if (vendaNome === itemNome || vendaNome.includes(itemNome) || itemNome.includes(vendaNome)) {
+              matchQtd += qtd;
+            }
+          }
+
+          if (matchQtd > 0 || vendasMap.size > 0) {
+            atualizarItemContagem(db, item.id, { venda: matchQtd });
+            atualizados++;
+          }
+        }
+
+        const contagemAtualizada = getOrCreateContagemHoje(db, contagem.data);
+        return sendJson(200, {
+          success: true,
+          message: `${atualizados} produtos atualizados com as vendas do turno!`,
+          contagem: contagemAtualizada
+        });
       }
 
       // -------------------------------------------------------------

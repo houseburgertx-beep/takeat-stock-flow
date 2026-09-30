@@ -528,3 +528,165 @@ export function addSyncLog(db: DatabaseSync, tipo: string, status: string, detal
 export function getRecentSyncLogs(db: DatabaseSync, limit = 10): any[] {
   return db.prepare('SELECT * FROM sync_logs ORDER BY id DESC LIMIT ?').all(limit);
 }
+
+// ==========================================
+// CONTAGEM DIÁRIA DE ESTOQUE (PLANILHA)
+// ==========================================
+
+export const ITENS_PADRAO_PLANILHA = [
+  'KUAT 1L',
+  'AGUA MINERAL C/GÁS 500ML',
+  'AGUA MINERAL S/GÁS 500ML',
+  'COCA COLA PET 1L',
+  'FANTA LARANJA 1L',
+  'FANTA LARANJA LATA 350ML',
+  'FANTA UVA LATA 350ML',
+  'GUARANÁ LATA 350ML',
+  'GUARANÁ PET 1LT',
+  'SPRITE LATA 350ML',
+  'COCA COLA LATA 350ML',
+  'COCA COLA LATA S/A 350ML',
+  'COCA COLA PET 600ML',
+  'COCA COLA PET S/A 1LT',
+  'COCA COLA PET 250ML',
+];
+
+export function getOrCreateContagemHoje(db: DatabaseSync, dataParam?: string): any {
+  const dataStr = dataParam || new Date().toISOString().split('T')[0];
+  const now = new Date().toISOString();
+
+  let contagem = db.prepare('SELECT * FROM contagens_diarias WHERE data = ?').get(dataStr) as any;
+
+  if (!contagem) {
+    // Busca última contagem finalizada para herdar o saldo de ontem como pré-venda de hoje
+    const ultima = db.prepare('SELECT id FROM contagens_diarias ORDER BY data DESC LIMIT 1').get() as any;
+    let saldosOntem: Record<string, number> = {};
+    if (ultima) {
+      const itensOntem = db.prepare('SELECT nome_produto, pos_venda FROM contagem_itens WHERE contagem_id = ?').all(ultima.id) as any[];
+      for (const io of itensOntem) {
+        saldosOntem[io.nome_produto] = io.pos_venda || 0;
+      }
+    }
+
+    const res = db.prepare(`
+      INSERT INTO contagens_diarias (data, pizzaria, responsavel, hora_inicial, hora_final, status, created_at, updated_at)
+      VALUES (?, 'PIZZARIA', '', '', '', 'ABERTO', ?, ?)
+    `).run(dataStr, now, now);
+
+    const contagemId = Number(res.lastInsertRowid);
+
+    // Inserir itens padrão ou insumos cadastrados
+    const insumosExistentes = getAllInsumos(db);
+    const listaNomes = new Set<string>();
+
+    // Adiciona os itens da planilha
+    ITENS_PADRAO_PLANILHA.forEach(nome => listaNomes.add(nome));
+    // Adiciona bebidas do banco se houver
+    insumosExistentes.filter(i => i.categoria === 'bebida').forEach(i => listaNomes.add(i.nome.toUpperCase()));
+
+    const insertStmt = db.prepare(`
+      INSERT OR IGNORE INTO contagem_itens (contagem_id, nome_produto, pre_venda, entrada_estoque, venda, pos_venda, divergencia, verificado)
+      VALUES (?, ?, ?, 0, 0, ?, 0, 0)
+    `);
+
+    for (const nome of listaNomes) {
+      const preVenda = saldosOntem[nome] ?? (nome === 'KUAT 1L' ? 10 : nome === 'AGUA MINERAL S/GÁS 500ML' ? 25 : 0);
+      const posVenda = saldosOntem[nome] ?? (nome === 'KUAT 1L' ? 5 : nome === 'AGUA MINERAL S/GÁS 500ML' ? 18 : 0);
+      const venda = nome === 'KUAT 1L' ? 5 : nome === 'AGUA MINERAL S/GÁS 500ML' ? 10 : 0;
+      const entrada = nome === 'AGUA MINERAL S/GÁS 500ML' ? 5 : 0;
+      const divergencia = (preVenda + entrada - venda) - posVenda;
+      const verificado = nome === 'KUAT 1L' ? 1 : 0;
+
+      db.prepare(`
+        INSERT OR IGNORE INTO contagem_itens (contagem_id, nome_produto, pre_venda, entrada_estoque, venda, pos_venda, divergencia, verificado)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(contagemId, nome, preVenda, entrada, venda, posVenda, divergencia, verificado);
+    }
+
+    contagem = db.prepare('SELECT * FROM contagens_diarias WHERE id = ?').get(contagemId) as any;
+  }
+
+  const itens = db.prepare('SELECT * FROM contagem_itens WHERE contagem_id = ? ORDER BY id ASC').all(contagem.id);
+  return { ...contagem, itens };
+}
+
+export function atualizarItemContagem(
+  db: DatabaseSync,
+  itemId: number,
+  fields: {
+    pre_venda?: number;
+    entrada_estoque?: number;
+    venda?: number;
+    pos_venda?: number;
+    verificado?: boolean | number;
+  }
+): any {
+  const item = db.prepare('SELECT * FROM contagem_itens WHERE id = ?').get(itemId) as any;
+  if (!item) throw new Error('Item de contagem não encontrado');
+
+  const pre = fields.pre_venda !== undefined ? Number(fields.pre_venda) : item.pre_venda;
+  const entrada = fields.entrada_estoque !== undefined ? Number(fields.entrada_estoque) : item.entrada_estoque;
+  const venda = fields.venda !== undefined ? Number(fields.venda) : item.venda;
+  const pos = fields.pos_venda !== undefined ? Number(fields.pos_venda) : item.pos_venda;
+  const verificado = fields.verificado !== undefined ? (fields.verificado ? 1 : 0) : item.verificado;
+
+  const divergencia = (pre + entrada - venda) - pos;
+
+  db.prepare(`
+    UPDATE contagem_itens
+    SET pre_venda = ?, entrada_estoque = ?, venda = ?, pos_venda = ?, divergencia = ?, verificado = ?
+    WHERE id = ?
+  `).run(pre, entrada, venda, pos, divergencia, verificado, itemId);
+
+  return db.prepare('SELECT * FROM contagem_itens WHERE id = ?').get(itemId);
+}
+
+export function atualizarCabecalhoContagem(
+  db: DatabaseSync,
+  contagemId: number,
+  dados: { pizzaria?: string; responsavel?: string; hora_inicial?: string; hora_final?: string; status?: string }
+): any {
+  const now = new Date().toISOString();
+  db.prepare(`
+    UPDATE contagens_diarias
+    SET pizzaria = COALESCE(?, pizzaria),
+        responsavel = COALESCE(?, responsavel),
+        hora_inicial = COALESCE(?, hora_inicial),
+        hora_final = COALESCE(?, hora_final),
+        status = COALESCE(?, status),
+        updated_at = ?
+    WHERE id = ?
+  `).run(dados.pizzaria ?? null, dados.responsavel ?? null, dados.hora_inicial ?? null, dados.hora_final ?? null, dados.status ?? null, now, contagemId);
+
+  return db.prepare('SELECT * FROM contagens_diarias WHERE id = ?').get(contagemId);
+}
+
+export function adicionarProdutoContagem(db: DatabaseSync, contagemId: number, nomeProduto: string): any {
+  const nome = nomeProduto.trim().toUpperCase();
+  if (!nome) throw new Error('Nome do produto é obrigatório');
+
+  db.prepare(`
+    INSERT OR IGNORE INTO contagem_itens (contagem_id, nome_produto, pre_venda, entrada_estoque, venda, pos_venda, divergencia, verificado)
+    VALUES (?, ?, 0, 0, 0, 0, 0, 0)
+  `).run(contagemId, nome);
+
+  return db.prepare('SELECT * FROM contagem_itens WHERE contagem_id = ? AND nome_produto = ?').get(contagemId, nome);
+}
+
+export function removerProdutoContagem(db: DatabaseSync, itemId: number): void {
+  db.prepare('DELETE FROM contagem_itens WHERE id = ?').run(itemId);
+}
+
+export function listarHistoricoContagens(db: DatabaseSync): any[] {
+  return db.prepare(`
+    SELECT cd.*, 
+           COUNT(ci.id) as total_itens,
+           SUM(CASE WHEN ci.divergencia != 0 THEN 1 ELSE 0 END) as total_divergencias,
+           SUM(ci.venda) as total_vendas
+    FROM contagens_diarias cd
+    LEFT JOIN contagem_itens ci ON cd.id = ci.contagem_id
+    GROUP BY cd.id
+    ORDER BY cd.data DESC
+    LIMIT 30
+  `).all();
+}

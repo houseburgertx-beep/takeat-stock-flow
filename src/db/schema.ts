@@ -140,5 +140,36 @@ export function initializeDatabase(db: DatabaseSync): void {
       detalhes TEXT,
       data_hora TEXT NOT NULL
     );
+
+    -- Folhas de Contagem de Estoque Diário (Planilha do Turno)
+    CREATE TABLE IF NOT EXISTS contagens_diarias (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      data TEXT NOT NULL UNIQUE,     -- 'YYYY-MM-DD'
+      pizzaria TEXT DEFAULT 'Pizzaria',
+      responsavel TEXT DEFAULT '',
+      hora_inicial TEXT DEFAULT '',
+      hora_final TEXT DEFAULT '',
+      status TEXT DEFAULT 'ABERTO',  -- 'ABERTO', 'FINALIZADO'
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    -- Linhas da Contagem Diária
+    CREATE TABLE IF NOT EXISTS contagem_itens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      contagem_id INTEGER NOT NULL,
+      nome_produto TEXT NOT NULL,
+      pre_venda REAL DEFAULT 0,
+      entrada_estoque REAL DEFAULT 0,
+      venda REAL DEFAULT 0,
+      pos_venda REAL DEFAULT 0,
+      divergencia REAL DEFAULT 0,
+      verificado INTEGER DEFAULT 0,
+      insumo_id INTEGER,
+      FOREIGN KEY (contagem_id) REFERENCES contagens_diarias(id) ON DELETE CASCADE,
+      UNIQUE(contagem_id, nome_produto)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_contagem_itens_contagem ON contagem_itens(contagem_id);
   `);
 }

@@ -3,618 +3,173 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Takeat Stock Flow | Gestão de Estoque & Ficha Técnica</title>
+  <title>Contagem de Estoque (Diário) - Takeat StockFlow</title>
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    .badge-critico { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
-    .badge-alerta { background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
-    .badge-ok { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    @media print {
+      body { background: white !important; color: black !important; padding: 0 !important; }
+      .no-print { display: none !important; }
+      .print-border { border: 1px solid #000 !important; }
+      .sheet-container { max-width: 100% !important; margin: 0 !important; box-shadow: none !important; }
+      input { border: none !important; background: transparent !important; text-align: center !important; }
+    }
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+<body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
 
-  <!-- TOPBAR -->
-  <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700/60 sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
-          <i data-lucide="boxes" class="w-5 h-5 text-white"></i>
-        </div>
-        <div>
-          <span class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-            Takeat <span class="text-orange-500 font-extrabold">StockFlow</span>
-            <span class="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20">V1.0 API</span>
-          </span>
-          <p class="text-xs text-slate-400">Controle de Bebidas, Insumos & Fichas Técnicas</p>
-        </div>
+  <!-- BARRA DE UTILITÁRIOS SUPERIOR (Apenas no app) -->
+  <header class="no-print bg-slate-900 text-white border-b border-slate-800 py-2.5 px-4 shadow">
+    <div class="max-w-6xl mx-auto flex items-center justify-between flex-wrap gap-3">
+      <div class="flex items-center space-x-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+        <span class="font-bold text-sm tracking-tight text-white">Takeat <span class="text-orange-400 font-extrabold">StockFlow</span></span>
+        <span class="text-[11px] text-slate-400 border-l border-slate-700 pl-2">Folha de Fechamento Diário</span>
       </div>
 
-      <!-- STATUS TAKEA T & AÇÕES -->
-      <div class="flex items-center space-x-3">
-        <button id="btn-header-conectar" onclick="abrirModalChave()" class="text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1.5 hidden shadow-sm">
-          <i data-lucide="key" class="w-3.5 h-3.5 text-amber-400"></i>
-          <span>Inserir Chave Takeat</span>
+      <div class="flex items-center space-x-2 text-xs">
+        <!-- Badge da Conexão Takeat -->
+        <button id="btn-status-takeat" onclick="abrirModalChave()" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">
+          <span id="dot-status-takeat" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="text-status-takeat" class="font-medium text-slate-200">Verificando Takeat...</span>
         </button>
-        <div id="status-badge" onclick="abrirModalChave()" title="Clique para configurar ou ver status da chave Takeat" class="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-950 border border-slate-700 text-xs cursor-pointer hover:border-orange-500 transition">
-          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-          <span class="text-slate-300" id="status-text">Verificando Takeat...</span>
-        </div>
-        <button onclick="sincronizarTudo()" class="text-xs bg-orange-500 hover:bg-orange-600 text-white px-3.5 py-1.5 rounded-lg font-semibold transition flex items-center gap-1.5 shadow-md shadow-orange-500/20">
-          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-          <span>Sincronizar Takeat</span>
+
+        <!-- Botão Histórico -->
+        <button onclick="abrirModalHistorico()" class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition">
+          <i data-lucide="history" class="w-3.5 h-3.5 text-blue-400"></i>
+          <span>Histórico</span>
+        </button>
+
+        <!-- Botão Imprimir -->
+        <button onclick="window.print()" class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition">
+          <i data-lucide="printer" class="w-3.5 h-3.5 text-slate-300"></i>
+          <span>Imprimir / PDF</span>
         </button>
       </div>
     </div>
   </header>
 
-  <!-- BANNER QUANDO CHAVE NÃO ESTÁ CONFIGURADA -->
-  <div id="banner-chave-pendente" class="hidden bg-gradient-to-r from-amber-950/80 via-amber-900/60 to-amber-950/80 border-b border-amber-500/30 py-2.5 px-4">
-    <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2 text-xs">
-      <div class="flex items-center gap-2 text-amber-200">
-        <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400 shrink-0"></i>
-        <span><strong>Chave da API Takeat não conectada:</strong> Conecte sua chave para carregar insumos, catálogo e rastrear pedidos em tempo real.</span>
-      </div>
-      <button onclick="abrirModalChave()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1 rounded-lg text-xs transition shadow flex items-center gap-1">
-        <i data-lucide="key" class="w-3.5 h-3.5"></i> Conectar Chave Agora
-      </button>
-    </div>
-  </div>
+  <!-- ÁREA PRINCIPAL DA PLANILHA -->
+  <main class="flex-1 py-6 px-3 sm:px-6">
+    <div class="sheet-container max-w-5xl mx-auto bg-white rounded-xl shadow-xl border border-slate-300 overflow-hidden">
 
-  <!-- NAVEGAÇÃO POR ABAS -->
-  <nav class="bg-slate-800/40 border-b border-slate-700/50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 sm:space-x-4 overflow-x-auto py-2">
-      <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="tab-btn px-3.5 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition bg-orange-500 text-white shadow-md shadow-orange-500/20">
-        <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Painel Geral
-      </button>
-      <button onclick="switchTab('estoque')" id="tab-btn-estoque" class="tab-btn px-3.5 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 flex items-center gap-2 transition">
-        <i data-lucide="package-search" class="w-4 h-4"></i> Estoque & Bebidas
-      </button>
-      <button onclick="switchTab('fichas')" id="tab-btn-fichas" class="tab-btn px-3.5 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 flex items-center gap-2 transition">
-        <i data-lucide="book-open" class="w-4 h-4"></i> Fichas Técnicas
-      </button>
-      <button onclick="switchTab('vendas')" id="tab-btn-vendas" class="tab-btn px-3.5 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 flex items-center gap-2 transition">
-        <i data-lucide="shopping-cart" class="w-4 h-4"></i> Rastreamento de Vendas
-      </button>
-      <button onclick="switchTab('movimentacoes')" id="tab-btn-movimentacoes" class="tab-btn px-3.5 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 flex items-center gap-2 transition">
-        <i data-lucide="history" class="w-4 h-4"></i> Auditoria Ledger
-      </button>
-      <button onclick="switchTab('sync')" id="tab-btn-sync" class="tab-btn px-3.5 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 flex items-center gap-2 transition">
-        <i data-lucide="key" class="w-4 h-4"></i> Conexão Takeat
-      </button>
-    </div>
-  </nav>
-
-  <!-- CONTEÚDO PRINCIPAL -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
-
-    <!-- 1. ABA DASHBOARD -->
-    <section id="tab-dashboard" class="space-y-6">
-      <!-- CARDS DE MÉTRICAS -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Itens em Estoque</span>
-            <div class="p-2.5 rounded-xl bg-blue-500/10 text-blue-400"><i data-lucide="boxes" class="w-5 h-5"></i></div>
-          </div>
-          <div class="mt-4 flex items-baseline gap-2">
-            <span id="metric-total-itens" class="text-3xl font-extrabold text-white">0</span>
-            <span class="text-xs text-slate-400">cadastrados</span>
-          </div>
-          <div class="mt-2 text-xs text-slate-400 flex items-center gap-1.5">
-            <span id="metric-total-bebidas" class="font-bold text-slate-300">0</span> bebidas /
-            <span id="metric-total-insumos" class="font-bold text-slate-300">0</span> insumos
-          </div>
+      <!-- BARRA DE AÇÕES OPERACIONAIS (Sobre a Folha) -->
+      <div class="no-print bg-slate-50 border-b border-slate-200 px-4 py-3 flex items-center justify-between flex-wrap gap-2">
+        <div class="flex items-center gap-2">
+          <label class="text-xs font-semibold text-slate-600 flex items-center gap-1">
+            <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-500"></i> Data da Contagem:
+          </label>
+          <input type="date" id="input-data-contagem" onchange="trocarDataContagem(this.value)" class="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:border-blue-600 focus:outline-none">
+          <span id="badge-turno-status" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">TURNO ABERTO</span>
         </div>
 
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Alertas de Reposição</span>
-            <div class="p-2.5 rounded-xl bg-red-500/10 text-red-400"><i data-lucide="alert-triangle" class="w-5 h-5"></i></div>
-          </div>
-          <div class="mt-4 flex items-baseline gap-2">
-            <span id="metric-total-alertas" class="text-3xl font-extrabold text-red-400">0</span>
-            <span class="text-xs text-slate-400">em nível crítico</span>
-          </div>
-          <div class="mt-2 text-xs text-slate-400">Abaixo do estoque mínimo</div>
-        </div>
+        <div class="flex items-center gap-2">
+          <!-- Sincronizar Vendas Takeat -->
+          <button onclick="sincronizarVendasTakeat()" id="btn-sync-vendas" class="bg-blue-900 hover:bg-blue-800 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg transition shadow flex items-center gap-1.5">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>Sincronizar Vendas Takeat</span>
+          </button>
 
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Vendas Rastreadas</span>
-            <div class="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400"><i data-lucide="check-circle-2" class="w-5 h-5"></i></div>
-          </div>
-          <div class="mt-4 flex items-baseline gap-2">
-            <span id="metric-vendas-rastreadas" class="text-3xl font-extrabold text-emerald-400">0</span>
-            <span class="text-xs text-slate-400">pedidos baixados</span>
-          </div>
-          <div class="mt-2 text-xs text-slate-400">Idempotência garantida</div>
-        </div>
-
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Valor do Estoque</span>
-            <div class="p-2.5 rounded-xl bg-amber-500/10 text-amber-400"><i data-lucide="circle-dollar-sign" class="w-5 h-5"></i></div>
-          </div>
-          <div class="mt-4 flex items-baseline gap-2">
-            <span id="metric-valor-estoque" class="text-2xl font-extrabold text-amber-400">R$ 0,00</span>
-          </div>
-          <div class="mt-2 text-xs text-slate-400">Custo total imobilizado</div>
-        </div>
-      </div>
-
-      <!-- CARD ONBOARDING: QUANDO NÃO HÁ DADOS SINCRONIZADOS -->
-      <div id="onboarding-card" class="bg-gradient-to-r from-slate-800 to-slate-850 border border-orange-500/30 rounded-2xl p-6 shadow-xl space-y-4">
-        <div class="flex items-start gap-4">
-          <div class="w-12 h-12 rounded-xl bg-orange-500/10 text-orange-400 flex items-center justify-center shrink-0 border border-orange-500/20">
-            <i data-lucide="cloud-lightning" class="w-6 h-6"></i>
-          </div>
-          <div class="flex-1">
-            <h3 class="text-base font-bold text-white">Conecte sua conta da Takeat</h3>
-            <p class="text-xs text-slate-300 mt-1 leading-relaxed">
-              Para importar seus insumos, catálogo de bebidas, produtos e acompanhar as vendas em tempo real, configure sua chave do <strong>AI Builders</strong> no arquivo local <code class="bg-slate-900 px-1.5 py-0.5 rounded text-orange-400 font-mono">.env</code>.
-            </p>
-            <div class="mt-4 flex flex-wrap gap-3">
-              <button onclick="switchTab('sync')" class="text-xs bg-orange-500 hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-md">
-                <i data-lucide="key" class="w-4 h-4"></i> Ver Instruções de Conexão
-              </button>
-              <button onclick="sincronizarTudo()" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold px-4 py-2 rounded-xl transition flex items-center gap-1.5">
-                <i data-lucide="refresh-cw" class="w-4 h-4"></i> Sincronizar Agora
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- SEÇÃO DE ALERTAS CRÍTICOS -->
-      <div id="secao-alertas-criticos" class="bg-red-950/20 border border-red-800/40 rounded-2xl p-5 hidden">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-base font-bold text-red-400 flex items-center gap-2">
-            <i data-lucide="alert-octagon" class="w-5 h-5"></i> Itens que Precisam de Reposição Urgente
-          </h3>
-          <span class="text-xs bg-red-900/60 text-red-200 px-2.5 py-1 rounded-full font-semibold">Reposição Imediata</span>
-        </div>
-        <div id="lista-alertas-criticos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
-      </div>
-
-      <!-- DUAS COLUNAS: ÚLTIMAS VENDAS E ÚLTIMAS MOVIMENTAÇÕES -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg flex flex-col">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-bold text-white flex items-center gap-2">
-              <i data-lucide="receipt" class="w-4 h-4 text-orange-400"></i> Últimas Vendas com Baixa de Insumos
-            </h3>
-            <button onclick="switchTab('vendas')" class="text-xs text-orange-400 hover:text-orange-300 font-semibold">Ver todas →</button>
-          </div>
-          <div id="dashboard-ultimas-vendas" class="space-y-3 flex-1">
-            <p class="text-xs text-slate-500 py-6 text-center">Nenhuma venda registrada ainda.</p>
-          </div>
-        </div>
-
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg flex flex-col">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-bold text-white flex items-center gap-2">
-              <i data-lucide="activity" class="w-4 h-4 text-blue-400"></i> Histórico Recente do Ledger
-            </h3>
-            <button onclick="switchTab('movimentacoes')" class="text-xs text-blue-400 hover:text-blue-300 font-semibold">Ver auditoria →</button>
-          </div>
-          <div id="dashboard-ultimas-movimentacoes" class="space-y-3 flex-1">
-            <p class="text-xs text-slate-500 py-6 text-center">Nenhuma movimentação registrada.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 2. ABA ESTOQUE & BEBIDAS -->
-    <section id="tab-estoque" class="space-y-6 hidden">
-      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <h2 class="text-lg font-bold text-white">Catálogo de Bebidas e Insumos</h2>
-            <p class="text-xs text-slate-400">Controle de saldos, estoques mínimos e entradas/saídas rápidas</p>
-          </div>
-          <div class="flex items-center gap-3">
-            <button onclick="dispararSyncInsumos()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold px-3 py-2.5 rounded-xl border border-slate-600 transition flex items-center gap-1.5">
-              <i data-lucide="cloud-download" class="w-4 h-4 text-orange-400"></i> Sincronizar Insumos Takeat
-            </button>
-            <button onclick="abrirModalNovoInsumo()" class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-2">
-              <i data-lucide="plus-circle" class="w-4 h-4"></i> Novo Item
-            </button>
-          </div>
-        </div>
-
-        <div class="flex flex-col sm:flex-row gap-3 mb-4">
-          <div class="relative flex-1">
-            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-slate-400"></i>
-            <input type="text" id="filtro-busca-insumo" oninput="renderTabelaInsumos()" placeholder="Buscar por nome ou código..." class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none focus:border-orange-500">
-          </div>
-          <div class="flex gap-2">
-            <select id="filtro-categoria-insumo" onchange="renderTabelaInsumos()" class="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-orange-500">
-              <option value="">Todas Categorias</option>
-              <option value="bebida">Bebidas</option>
-              <option value="insumo">Insumos</option>
-              <option value="alimento">Alimentos</option>
-              <option value="embalagem">Embalagens</option>
-            </select>
-            <select id="filtro-status-insumo" onchange="renderTabelaInsumos()" class="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-orange-500">
-              <option value="">Todos os Níveis</option>
-              <option value="critico">Abaixo do Mínimo</option>
-              <option value="normal">Estoque Seguro</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="overflow-x-auto border border-slate-700/60 rounded-xl">
-          <table class="w-full text-left border-collapse text-sm">
-            <thead class="bg-slate-900/60 text-slate-400 text-xs uppercase font-semibold">
-              <tr>
-                <th class="p-3.5">Item / Insumo</th>
-                <th class="p-3.5">Categoria</th>
-                <th class="p-3.5 text-right">Saldo Atual</th>
-                <th class="p-3.5 text-right">Estoque Mínimo</th>
-                <th class="p-3.5">Status</th>
-                <th class="p-3.5 text-right">Custo Unitário</th>
-                <th class="p-3.5 text-center">Ações Rápidas</th>
-              </tr>
-            </thead>
-            <tbody id="tabela-insumos-body" class="divide-y divide-slate-700/40 text-slate-200"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- 3. ABA FICHAS TÉCNICAS (BOM) -->
-    <section id="tab-fichas" class="space-y-6 hidden">
-      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <h2 class="text-lg font-bold text-white">Mapeamento de Fichas Técnicas (Receituário)</h2>
-            <p class="text-xs text-slate-400">Defina os insumos consumidos por cada Produto ou Complemento vendido no Takeat</p>
-          </div>
-          <div class="flex items-center gap-3">
-            <button onclick="dispararSyncCatalogo()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-600 transition flex items-center gap-1.5">
-              <i data-lucide="cloud-download" class="w-3.5 h-3.5 text-blue-400"></i> Sincronizar Catálogo Takeat
-            </button>
-            <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-700">
-              <button onclick="switchFichaSubTab('produtos')" id="btn-sub-produtos" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-orange-500 text-white transition">Produtos</button>
-              <button onclick="switchFichaSubTab('complementos')" id="btn-sub-complementos" class="px-4 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition">Complementos (Adicionais)</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div class="lg:col-span-5 bg-slate-900/60 border border-slate-700/60 rounded-xl p-4 flex flex-col h-[580px]">
-            <div class="mb-3 relative">
-              <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-slate-400"></i>
-              <input type="text" id="filtro-catalogo-item" oninput="renderListaCatalogo()" placeholder="Buscar no catálogo..." class="w-full bg-slate-800 border border-slate-700 text-slate-100 text-xs rounded-xl pl-9 pr-3 py-2.5 focus:outline-none focus:border-orange-500">
-            </div>
-            <div id="lista-catalogo-container" class="overflow-y-auto flex-1 space-y-2 pr-1"></div>
-          </div>
-
-          <div class="lg:col-span-7 bg-slate-900/60 border border-slate-700/60 rounded-xl p-5 flex flex-col h-[580px]" id="editor-ficha-container">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
-              <div>
-                <span id="editor-tipo-badge" class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">Produto</span>
-                <h3 id="editor-item-nome" class="text-base font-bold text-white mt-1">Selecione um item ao lado</h3>
-                <p id="editor-item-categoria" class="text-xs text-slate-400">Para ver ou configurar a receita de insumos</p>
-              </div>
-              <button id="btn-salvar-ficha" onclick="salvarFichaAtual()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                <i data-lucide="save" class="w-4 h-4"></i> Salvar Receita
-              </button>
-            </div>
-
-            <div class="flex-1 overflow-y-auto space-y-3 pr-1" id="editor-ingredientes-lista">
-              <div class="h-full flex flex-col items-center justify-center text-slate-500 text-xs">
-                <i data-lucide="book-marked" class="w-10 h-10 mb-2 stroke-1"></i>
-                Clique em um produto ou complemento à esquerda para editar sua ficha técnica.
-              </div>
-            </div>
-
-            <div id="form-add-ingrediente" class="border-t border-slate-800 pt-4 mt-4 hidden">
-              <div class="grid grid-cols-12 gap-2 items-center">
-                <div class="col-span-6">
-                  <select id="select-novo-insumo" class="w-full bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg p-2 focus:outline-none focus:border-orange-500">
-                    <option value="">Selecione o Insumo...</option>
-                  </select>
-                </div>
-                <div class="col-span-3">
-                  <input type="number" step="any" min="0" id="input-qtd-consumida" placeholder="Qtd." class="w-full bg-slate-800 border border-slate-700 text-slate-100 text-xs rounded-lg p-2 focus:outline-none focus:border-orange-500">
-                </div>
-                <div class="col-span-3">
-                  <button type="button" onclick="adicionarInsumoNaFicha()" class="w-full bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold py-2 px-2 rounded-lg transition flex items-center justify-center gap-1">
-                    <i data-lucide="plus" class="w-3.5 h-3.5"></i> Inserir
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 4. ABA RASTREAMENTO DE VENDAS -->
-    <section id="tab-vendas" class="space-y-6 hidden">
-      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <h2 class="text-lg font-bold text-white">Vendas & Baixa de Insumos</h2>
-            <p class="text-xs text-slate-400">Rastreamento de cada item e complemento vendido e seu impacto no estoque</p>
-          </div>
-          <button onclick="dispararSyncVendas()" class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-2">
-            <i data-lucide="refresh-cw" class="w-4 h-4"></i> Rastrear Vendas Takeat Agora
+          <!-- Adicionar Bebida / Produto -->
+          <button onclick="abrirModalAddProduto()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            <span>Adicionar Item</span>
           </button>
         </div>
+      </div>
 
-        <div class="overflow-x-auto border border-slate-700/60 rounded-xl">
-          <table class="w-full text-left border-collapse text-sm">
-            <thead class="bg-slate-900/60 text-slate-400 text-xs uppercase font-semibold">
-              <tr>
-                <th class="p-3.5">Pedido Takeat</th>
-                <th class="p-3.5">Produto & Qtd</th>
-                <th class="p-3.5">Complementos / Adicionais</th>
-                <th class="p-3.5">Canal / Mesa</th>
-                <th class="p-3.5">Insumos Baixados</th>
-                <th class="p-3.5 text-right">Data/Hora</th>
-              </tr>
-            </thead>
-            <tbody id="tabela-vendas-body" class="divide-y divide-slate-700/40 text-slate-200"></tbody>
-          </table>
+      <!-- CABEÇALHO IDÊNTICO À PLANILHA -->
+      <div class="bg-[#0b294f] text-white text-center py-2.5 px-4 font-black text-lg tracking-wider uppercase border-b-2 border-slate-900">
+        CONTAGEM DE ESTOQUE (DIARIO)
+      </div>
+
+      <!-- SUB-CABEÇALHO: PIZZARIA, RESPONSÁVEL, HORA INICIAL, HORA FINAL -->
+      <div class="grid grid-cols-1 sm:grid-cols-4 border-b-2 border-slate-800 text-xs divide-y sm:divide-y-0 sm:divide-x divide-slate-800 bg-slate-100">
+        <!-- NOME DO RESTAURANTE / PIZZARIA -->
+        <div class="bg-[#0b294f] text-white font-bold p-2.5 flex items-center justify-center uppercase tracking-wide">
+          <input type="text" id="cabecalho-pizzaria" value="PIZZARIA" onchange="salvarCabecalho()" class="bg-transparent text-white font-black text-center w-full focus:bg-blue-950/60 rounded px-1 uppercase focus:outline-none">
+        </div>
+
+        <!-- RESPONSÁVEL -->
+        <div class="p-2 flex flex-col justify-center bg-white">
+          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-tight">RESPONSÁVEL:</span>
+          <input type="text" id="cabecalho-responsavel" placeholder="Nome do atendente" onchange="salvarCabecalho()" class="font-semibold text-slate-800 w-full focus:outline-none focus:border-b-2 focus:border-blue-700 text-xs">
+        </div>
+
+        <!-- HORA INICIAL -->
+        <div class="p-2 flex flex-col justify-center bg-white">
+          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-tight">HORA INICIAL:</span>
+          <input type="time" id="cabecalho-hora-inicial" onchange="salvarCabecalho()" class="font-semibold text-slate-800 w-full focus:outline-none focus:border-b-2 focus:border-blue-700 text-xs">
+        </div>
+
+        <!-- HORA FINAL -->
+        <div class="p-2 flex flex-col justify-center bg-white">
+          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-tight">HORA FINAL:</span>
+          <input type="time" id="cabecalho-hora-final" onchange="salvarCabecalho()" class="font-semibold text-slate-800 w-full focus:outline-none focus:border-b-2 focus:border-blue-700 text-xs">
         </div>
       </div>
-    </section>
 
-    <!-- 5. ABA AUDITORIA LEDGER -->
-    <section id="tab-movimentacoes" class="space-y-6 hidden">
-      <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg">
-        <div class="flex items-center justify-between mb-6">
-          <div>
-            <h2 class="text-lg font-bold text-white">Ledger Imutável de Movimentações</h2>
-            <p class="text-xs text-slate-400">Histórico completo de auditoria para cada grama, mililitro ou unidade movimentada</p>
-          </div>
-          <span class="text-xs bg-slate-900 text-slate-400 px-3 py-1.5 rounded-xl border border-slate-700 font-mono">
-            Rastreabilidade 100%
-          </span>
-        </div>
-
-        <div class="overflow-x-auto border border-slate-700/60 rounded-xl">
-          <table class="w-full text-left border-collapse text-sm">
-            <thead class="bg-slate-900/60 text-slate-400 text-xs uppercase font-semibold">
-              <tr>
-                <th class="p-3.5">Data/Hora</th>
-                <th class="p-3.5">Item</th>
-                <th class="p-3.5">Tipo</th>
-                <th class="p-3.5 text-right">Variação</th>
-                <th class="p-3.5 text-right">Saldo Anterior</th>
-                <th class="p-3.5 text-right">Novo Saldo</th>
-                <th class="p-3.5">Origem / Motivo</th>
-              </tr>
-            </thead>
-            <tbody id="tabela-ledger-body" class="divide-y divide-slate-700/40 text-slate-200"></tbody>
-          </table>
-        </div>
+      <!-- TABELA DE CONTAGEM DE PRODUTOS -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs text-left border-collapse" id="tabela-contagem">
+          <thead>
+            <tr class="bg-slate-200 text-slate-900 border-b-2 border-slate-800 font-extrabold tracking-tight uppercase text-center">
+              <th class="p-2.5 text-left border-r border-slate-300 w-1/3 sm:w-2/5">PRODUTOS</th>
+              <th class="p-2.5 border-r border-slate-300 w-20">PRÉ VENDA</th>
+              <th class="p-2.5 border-r border-slate-300 w-24">ENTRADA ESTOQUE</th>
+              <th class="p-2.5 border-r border-slate-300 w-20 bg-blue-50/70 text-blue-950">VENDA</th>
+              <th class="p-2.5 border-r border-slate-300 w-20">PÓS VENDA</th>
+              <th class="p-2.5 border-r border-slate-300 w-24">DIVERGENCIA</th>
+              <th class="p-2.5 w-16">VERIFICA</th>
+            </tr>
+          </thead>
+          <tbody id="tabela-contagem-corpo" class="divide-y divide-slate-300 font-mono">
+            <!-- Linhas geradas via JavaScript -->
+          </tbody>
+        </table>
       </div>
-    </section>
 
-    <!-- 6. ABA CONEXÃO TAKEAT -->
-    <section id="tab-sync" class="space-y-6 hidden">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Status das Credenciais & Conexão de Chave -->
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg space-y-4">
-          <div class="flex items-center justify-between">
-            <h3 class="text-base font-bold text-white flex items-center gap-2">
-              <i data-lucide="key" class="w-5 h-5 text-orange-400"></i> Credenciais & Conexão Takeat
-            </h3>
-            <span id="badge-key-status" class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">Chave Pendente</span>
+      <!-- RODAPÉ DE RESUMO DA FOLHA -->
+      <div class="bg-slate-50 border-t-2 border-slate-800 p-3 sm:p-4 text-xs">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+          <div class="bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
+            <span class="block text-[10px] font-bold text-slate-500 uppercase">Total Itens</span>
+            <span class="text-base font-black text-slate-900" id="resumo-total-itens">0</span>
           </div>
-          <p class="text-xs text-slate-400 leading-relaxed">
-            Insira sua API Key gerada no <a href="https://ai-builders.takeat.app" target="_blank" class="text-orange-400 underline font-semibold">Takeat AI Builders</a>. A chave é salva localmente no seu arquivo <code class="bg-slate-900 text-slate-200 px-1 py-0.5 rounded font-mono">.env</code> e validada imediatamente com a Takeat.
-          </p>
-
-          <!-- Input direto da chave -->
-          <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-700/80 space-y-3">
-            <label class="block text-xs font-semibold text-slate-300">Inserir / Atualizar API Key</label>
-            <div class="relative">
-              <input type="password" id="input-api-key-sync" placeholder="Cole sua chave: tk_live_... ou tk_test_..." class="w-full bg-slate-950 border border-slate-700 text-slate-100 text-xs font-mono rounded-xl p-3 pr-10 focus:border-orange-500 focus:outline-none">
-              <button type="button" onclick="toggleKeyVisibility('input-api-key-sync')" class="absolute right-3 top-3 text-slate-400 hover:text-white" title="Mostrar/ocultar">
-                <i data-lucide="eye" class="w-4 h-4"></i>
-              </button>
-            </div>
-            <button onclick="salvarChave('input-api-key-sync')" id="btn-salvar-chave-sync" class="w-full bg-orange-500 hover:bg-orange-600 text-white p-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-md shadow-orange-500/20">
-              <i data-lucide="check-circle" class="w-4 h-4"></i>
-              <span>Salvar e Conectar Takeat</span>
-            </button>
-            <div id="msg-chave-sync" class="hidden p-3 rounded-xl text-xs"></div>
+          <div class="bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
+            <span class="block text-[10px] font-bold text-slate-500 uppercase">Total Vendas (Takeat)</span>
+            <span class="text-base font-black text-blue-700" id="resumo-total-vendas">0</span>
           </div>
-
-          <div class="bg-slate-900/80 rounded-xl p-4 border border-slate-700/60 space-y-3 font-mono text-xs">
-            <div class="flex justify-between items-center">
-              <span class="text-slate-400">Status no .env:</span>
-              <span id="sync-info-key" class="text-amber-400 font-semibold">Verificando...</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-slate-400">Access Token Ativo:</span>
-              <span id="sync-info-token" class="text-slate-300">Não emitido</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-slate-400">Validade do Token:</span>
-              <span id="sync-info-expira" class="text-slate-300">-</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-slate-400">Escopos Autorizados:</span>
-              <span id="sync-info-escopos" class="text-slate-300 truncate max-w-[200px]">-</span>
-            </div>
+          <div class="bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
+            <span class="block text-[10px] font-bold text-slate-500 uppercase">Divergências</span>
+            <span class="text-base font-black" id="resumo-total-divergencias">0</span>
           </div>
-
-          <div class="p-3.5 rounded-xl bg-slate-900/50 border border-slate-700/50 text-xs text-slate-300 space-y-1.5">
-            <p class="font-semibold text-slate-300 flex items-center gap-1.5"><i data-lucide="terminal" class="w-4 h-4 text-orange-400"></i> Ou via Terminal:</p>
-            <p class="text-[11px] text-slate-400">Você também pode rodar no terminal:</p>
-            <code class="block bg-slate-950 p-2 rounded text-[11px] text-orange-400 font-mono select-all">echo "TAKEAT_API_KEY=sua_chave_aqui" > .env</code>
-          </div>
-        </div>
-
-        <!-- Sincronizadores Manuais -->
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg space-y-4">
-          <h3 class="text-base font-bold text-white flex items-center gap-2">
-            <i data-lucide="cloud-sync" class="w-5 h-5 text-emerald-400"></i> Sincronização Sob Demanda
-          </h3>
-          <p class="text-xs text-slate-400">
-            Importe os dados reais da sua loja da Takeat a qualquer momento:
-          </p>
-
-          <div class="space-y-3">
-            <button onclick="dispararSyncInsumos()" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 p-3 rounded-xl border border-slate-600 text-xs font-bold flex items-center justify-between transition">
-              <div class="flex items-center gap-2.5">
-                <i data-lucide="package" class="w-4 h-4 text-orange-400"></i>
-                <div class="text-left">
-                  <p>1. Sincronizar Insumos Takeat</p>
-                  <p class="text-[10px] text-slate-400 font-normal">GET /v1/inputs (paginação 100 por lote)</p>
-                </div>
-              </div>
-              <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
-            </button>
-
-            <button onclick="dispararSyncCatalogo()" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 p-3 rounded-xl border border-slate-600 text-xs font-bold flex items-center justify-between transition">
-              <div class="flex items-center gap-2.5">
-                <i data-lucide="book" class="w-4 h-4 text-blue-400"></i>
-                <div class="text-left">
-                  <p>2. Sincronizar Catálogo & Complementos</p>
-                  <p class="text-[10px] text-slate-400 font-normal">GET /v1/products & /v1/complements</p>
-                </div>
-              </div>
-              <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
-            </button>
-
-            <button onclick="dispararSyncVendas()" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 p-3 rounded-xl border border-slate-600 text-xs font-bold flex items-center justify-between transition">
-              <div class="flex items-center gap-2.5">
-                <i data-lucide="shopping-bag" class="w-4 h-4 text-emerald-400"></i>
-                <div class="text-left">
-                  <p>3. Processar Vendas & Baixar Estoque</p>
-                  <p class="text-[10px] text-slate-400 font-normal">GET /v1/table-sessions (últimas 24h)</p>
-                </div>
-              </div>
-              <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+          <div class="bg-white p-2 rounded-lg border border-slate-200 shadow-sm flex items-center justify-center">
+            <button onclick="alternarStatusTurno()" id="btn-finalizar-turno" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-2 rounded text-xs transition shadow flex items-center justify-center gap-1">
+              <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+              <span id="label-btn-turno">Fechar Turno</span>
             </button>
           </div>
         </div>
       </div>
-    </section>
 
+    </div>
   </main>
-
-  <!-- MODAL: AJUSTE RÁPIDO DE ESTOQUE -->
-  <div id="modal-ajuste" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between border-b border-slate-700 pb-3">
-        <h3 class="text-base font-bold text-white flex items-center gap-2">
-          <i data-lucide="plus-minus" class="w-4 h-4 text-orange-400"></i> Ajustar Saldo em Estoque
-        </h3>
-        <button onclick="fecharModalAjuste()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
-      </div>
-
-      <div>
-        <p class="text-sm font-semibold text-white" id="modal-ajuste-item-nome">Nome do Insumo</p>
-        <p class="text-xs text-slate-400">Saldo atual: <span id="modal-ajuste-saldo-atual" class="font-bold text-orange-400">0</span></p>
-      </div>
-
-      <div class="space-y-3">
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Tipo de Movimentação</label>
-          <select id="modal-ajuste-tipo" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-2.5">
-            <option value="ENTRADA_COMPRA">Entrada / Reposição (+)</option>
-            <option value="AJUSTE_INVENTARIO">Ajuste de Inventário (+ / -)</option>
-            <option value="PERDA">Perda / Desperdício / Quebra (-)</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Quantidade a Movimentar</label>
-          <input type="number" step="any" id="modal-ajuste-quantidade" placeholder="Ex: 10 ou -2" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-2.5 focus:border-orange-500">
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Motivo / Observação</label>
-          <input type="text" id="modal-ajuste-descricao" placeholder="Ex: NF 1234 / Contagem física" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-2.5 focus:border-orange-500">
-        </div>
-      </div>
-
-      <div class="flex justify-end gap-2 pt-2 border-t border-slate-700">
-        <button onclick="fecharModalAjuste()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-300 hover:bg-slate-700">Cancelar</button>
-        <button onclick="salvarAjusteEstoque()" class="px-4 py-2 rounded-xl text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-md">Confirmar Ajuste</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: NOVO INSUMO / BEBIDA -->
-  <div id="modal-novo-insumo" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between border-b border-slate-700 pb-3">
-        <h3 class="text-base font-bold text-white flex items-center gap-2">
-          <i data-lucide="package-plus" class="w-4 h-4 text-orange-400"></i> Cadastrar Bebida ou Insumo
-        </h3>
-        <button onclick="fecharModalNovoInsumo()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
-      </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-        <div class="sm:col-span-2">
-          <label class="block font-semibold text-slate-300 mb-1">Nome do Item *</label>
-          <input type="text" id="novo-nome" placeholder="Ex: Cerveja Heineken 330ml / Xarope de Morango" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-2.5">
-        </div>
-
-        <div>
-          <label class="block font-semibold text-slate-300 mb-1">Categoria *</label>
-          <select id="novo-categoria" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-2.5">
-            <option value="bebida">Bebida</option>
-            <option value="insumo">Insumo</option>
-            <option value="alimento">Alimento</option>
-            <option value="embalagem">Embalagem</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block font-semibold text-slate-300 mb-1">Unidade de Medida *</label>
-          <select id="novo-unidade" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-2.5">
-            <option value="un">Unidade (un)</option>
-            <option value="ml">Mililitro (ml)</option>
-            <option value="l">Litro (l)</option>
-            <option value="g">Grama (g)</option>
-            <option value="kg">Quilograma (kg)</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block font-semibold text-slate-300 mb-1">Estoque Inicial</label>
-          <input type="number" step="any" id="novo-quantidade" value="0" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-2.5">
-        </div>
-
-        <div>
-          <label class="block font-semibold text-slate-300 mb-1">Estoque Mínimo (Alerta) *</label>
-          <input type="number" step="any" id="novo-minimo" value="5" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-2.5">
-        </div>
-
-        <div>
-          <label class="block font-semibold text-slate-300 mb-1">Custo Unitário (R$)</label>
-          <input type="number" step="0.01" id="novo-preco" value="0.00" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-2.5">
-        </div>
-
-        <div>
-          <label class="block font-semibold text-slate-300 mb-1">Código / SKU (Opcional)</label>
-          <input type="text" id="novo-codigo" placeholder="Auto" class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl p-2.5">
-        </div>
-      </div>
-
-      <div class="flex justify-end gap-2 pt-2 border-t border-slate-700">
-        <button onclick="fecharModalNovoInsumo()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-300 hover:bg-slate-700">Cancelar</button>
-        <button onclick="salvarNovoInsumo()" class="px-4 py-2 rounded-xl text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-md">Salvar</button>
-      </div>
-    </div>
-  </div>
 
   <!-- MODAL: CONECTAR CHAVE API TAKEAT -->
   <div id="modal-chave" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+    <div class="bg-slate-900 text-white border border-slate-700 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
           <i data-lucide="key" class="w-5 h-5 text-orange-400"></i> Conectar API Key da Takeat
         </h3>
@@ -622,27 +177,27 @@
       </div>
 
       <p class="text-xs text-slate-300 leading-relaxed">
-        Cole sua chave gerada no portal <a href="https://ai-builders.takeat.app" target="_blank" class="text-orange-400 underline font-medium">Takeat AI Builders</a>. Ela será gravada com segurança no seu arquivo local <code class="bg-slate-900 text-orange-300 px-1 py-0.5 rounded font-mono">.env</code> e validada imediatamente.
+        Cole sua chave gerada no portal <a href="https://ai-builders.takeat.app" target="_blank" class="text-orange-400 underline font-medium">Takeat AI Builders</a>. A chave conecta as vendas em tempo real com a coluna <strong>VENDA</strong>.
       </p>
 
       <div class="space-y-3">
         <div>
           <label class="block text-xs font-semibold text-slate-300 mb-1">Chave da API (API Key)</label>
           <div class="relative">
-            <input type="password" id="input-api-key-modal" placeholder="Ex: tk_live_... ou tk_test_..." class="w-full bg-slate-900 border border-slate-700 text-slate-100 text-xs font-mono rounded-xl p-3 pr-10 focus:border-orange-500 focus:outline-none">
+            <input type="password" id="input-api-key-modal" placeholder="Ex: tk_live_... ou tk_test_..." class="w-full bg-slate-950 border border-slate-700 text-slate-100 text-xs font-mono rounded-xl p-3 pr-10 focus:border-orange-500 focus:outline-none">
             <button type="button" onclick="toggleKeyVisibility('input-api-key-modal')" class="absolute right-3 top-3 text-slate-400 hover:text-white" title="Mostrar/ocultar">
               <i data-lucide="eye" class="w-4 h-4"></i>
             </button>
           </div>
-          <p class="text-[10px] text-slate-500 mt-1">Nunca compartilhe sua chave em chats ou repositórios públicos.</p>
+          <p class="text-[10px] text-slate-500 mt-1">Sua chave é armazenada com segurança localmente no arquivo .env.</p>
         </div>
 
         <div id="msg-chave-modal" class="hidden p-3 rounded-xl text-xs"></div>
       </div>
 
-      <div class="flex justify-end gap-2 pt-3 border-t border-slate-700">
-        <button onclick="fecharModalChave()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-300 hover:bg-slate-700 transition">Cancelar</button>
-        <button onclick="salvarChave('input-api-key-modal')" id="btn-salvar-chave-modal" class="px-4 py-2 rounded-xl text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/20 transition flex items-center gap-1.5">
+      <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+        <button onclick="fecharModalChave()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-300 hover:bg-slate-800 transition">Cancelar</button>
+        <button onclick="salvarChave('input-api-key-modal')" id="btn-salvar-chave-modal" class="px-4 py-2 rounded-xl text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white shadow transition flex items-center gap-1.5">
           <i data-lucide="check" class="w-4 h-4"></i>
           <span>Salvar e Conectar</span>
         </button>
@@ -650,764 +205,123 @@
     </div>
   </div>
 
-  <!-- CONTAINER DE TOAST NOTIFICATIONS -->
+  <!-- MODAL: ADICIONAR NOVO PRODUTO NA CONTAGEM -->
+  <div id="modal-add-produto" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white text-slate-900 border border-slate-300 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+          <i data-lucide="plus-circle" class="w-4 h-4 text-blue-900"></i> Adicionar Item na Folha
+        </h3>
+        <button onclick="fecharModalAddProduto()" class="text-slate-400 hover:text-slate-700"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 mb-1">Nome do Produto / Bebida</label>
+        <input type="text" id="input-novo-produto-nome" placeholder="Ex: CERVEJA BUDWEISER 330ML" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs font-semibold uppercase focus:border-blue-700 focus:outline-none">
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-200">
+        <button onclick="fecharModalAddProduto()" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancelar</button>
+        <button onclick="salvarNovoProduto()" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-blue-900 hover:bg-blue-800 text-white shadow">Adicionar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: HISTÓRICO DE FOLHAS ANTERIORES -->
+  <div id="modal-historico" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white text-slate-900 border border-slate-300 rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+          <i data-lucide="calendar" class="w-4 h-4 text-blue-900"></i> Histórico de Contagens Diárias
+        </h3>
+        <button onclick="fecharModalHistorico()" class="text-slate-400 hover:text-slate-700"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <div class="max-h-80 overflow-y-auto divide-y divide-slate-200 text-xs" id="lista-historico">
+        <p class="text-slate-500 py-4 text-center">Carregando histórico...</p>
+      </div>
+
+      <div class="flex justify-end pt-2 border-t border-slate-200">
+        <button onclick="fecharModalHistorico()" class="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTIFICAÇÕES TOAST -->
   <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
 
-  <footer class="bg-slate-900 border-t border-slate-800 py-4 text-center text-xs text-slate-500">
-    Takeat Stock Flow &copy; 2026 &bull; Conectado à Nova API V1.0 da Takeat
-  </footer>
-
   <script>
-    // Limpa dados de demonstração antigos se existirem no navegador
-    try {
-      const existingInsumos = localStorage.getItem('takeat_insumos');
-      if (existingInsumos && existingInsumos.includes('BEB-HEIN-330')) {
-        localStorage.clear();
-      }
-    } catch(e) {}
-
     const state = {
-      isBackend: false,
-      insumos: [],
-      produtos: [],
-      complementos: [],
-      vendas: [],
-      movimentacoes: [],
-      alertas: [],
-      fichaSubTab: 'produtos',
-      selectedItem: null,
-      selectedFichaItens: [],
-      insumoAjusteAlvo: null,
+      contagem: null,
+      debounceTimers: {},
+      isTakeatConfigured: false
     };
 
     document.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
-      await carregarDados();
-      setInterval(carregarStatus, 30000);
+      const hoje = new Date().toISOString().split('T')[0];
+      document.getElementById('input-data-contagem').value = hoje;
+      await verificarStatusTakeat();
+      await carregarContagem(hoje);
     });
 
-    async function carregarDados() {
-      try {
-        const statusRes = await fetch('/api/status').then(r => r.json());
-        state.isBackend = true;
-        atualizarStatusUI(statusRes);
-
-        const [dashRes, insumosRes, prodRes, compRes, vendasRes, movRes] = await Promise.all([
-          fetch('/api/dashboard').then(r => r.json()),
-          fetch('/api/insumos').then(r => r.json()),
-          fetch('/api/produtos').then(r => r.json()),
-          fetch('/api/complementos').then(r => r.json()),
-          fetch('/api/vendas').then(r => r.json()),
-          fetch('/api/movimentacoes').then(r => r.json()),
-        ]);
-
-        state.insumos = insumosRes || [];
-        state.produtos = prodRes || [];
-        state.complementos = compRes || [];
-        state.vendas = vendasRes || [];
-        state.movimentacoes = movRes || [];
-        state.alertas = dashRes.alertas_criticos || [];
-
-        renderDashboard(dashRes);
-        popularSelectInsumos();
-      } catch (err) {
-        // Se a API não respondeu (ex: rodando estático no GitHub Pages)
-        state.isBackend = false;
-        document.getElementById('status-badge').innerHTML = `
-          <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-          <span class="text-amber-300 font-medium">Aguardando Backend Local</span>
-        `;
-        document.getElementById('sync-info-key').textContent = 'Inicie "npm start" no terminal';
-        document.getElementById('sync-info-token').textContent = 'Desconectado';
-        document.getElementById('sync-info-expira').textContent = '-';
-        document.getElementById('sync-info-escopos').textContent = 'inputs:read, products:read, table-sessions:read';
-
-        renderDashboard({
-          total_itens: 0,
-          total_bebidas: 0,
-          total_insumos: 0,
-          total_alertas: 0,
-          valor_total_estoque: 0,
-          alertas_criticos: [],
-          ultimos_pedidos: [],
-          ultimas_movimentacoes: []
-        });
-      }
-    }
-
-    async function carregarStatus() {
-      if (!state.isBackend) return;
+    // -------------------------------------------------------------
+    // STATUS E CONEXÃO TAKEA T
+    // -------------------------------------------------------------
+    async function verificarStatusTakeat() {
       try {
         const res = await fetch('/api/status').then(r => r.json());
-        atualizarStatusUI(res);
-      } catch (e) {}
-    }
+        state.isTakeatConfigured = !!res.takeat_api_key_configurada;
+        const dot = document.getElementById('dot-status-takeat');
+        const text = document.getElementById('text-status-takeat');
 
-    function atualizarStatusUI(res) {
-      state.takeatApiKeyConfigurada = Boolean(res.takeat_api_key_configurada);
-      const badge = document.getElementById('status-badge');
-      const keyInfo = document.getElementById('sync-info-key');
-      const tokenInfo = document.getElementById('sync-info-token');
-      const expiraInfo = document.getElementById('sync-info-expira');
-      const escoposInfo = document.getElementById('sync-info-escopos');
-      const banner = document.getElementById('banner-chave-pendente');
-      const btnHeader = document.getElementById('btn-header-conectar');
-      const badgeKey = document.getElementById('badge-key-status');
-
-      if (res.takeat_api_key_configurada) {
-        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-emerald-400 font-semibold">Takeat Conectada</span>`;
-        if (keyInfo) {
-          keyInfo.textContent = 'Configurada no .env';
-          keyInfo.className = 'text-emerald-400 font-semibold';
+        if (res.takeat_api_key_configurada) {
+          dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+          text.textContent = 'Takeat Conectada';
+          text.className = 'font-semibold text-emerald-300';
+        } else {
+          dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+          text.textContent = 'Inserir Chave Takeat';
+          text.className = 'font-medium text-amber-300';
         }
-        if (banner) banner.classList.add('hidden');
-        if (btnHeader) btnHeader.classList.add('hidden');
-        if (badgeKey) {
-          badgeKey.className = 'text-xs px-2.5 py-0.5 rounded-full font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-          badgeKey.textContent = 'Conectada';
-        }
-      } else {
-        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span><span class="text-amber-300 font-medium">Chave Não Configurada</span>`;
-        if (keyInfo) {
-          keyInfo.textContent = 'Defina TAKEAT_API_KEY';
-          keyInfo.className = 'text-amber-400 font-semibold';
-        }
-        if (banner) banner.classList.remove('hidden');
-        if (btnHeader) btnHeader.classList.remove('hidden');
-        if (badgeKey) {
-          badgeKey.className = 'text-xs px-2.5 py-0.5 rounded-full font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20';
-          badgeKey.textContent = 'Chave Pendente';
-        }
+      } catch (e) {
+        document.getElementById('text-status-takeat').textContent = 'Takeat Offline';
       }
-
-      if (res.token_valido) {
-        if (tokenInfo) {
-          tokenInfo.textContent = 'Ativo (Bearer OAuth)';
-          tokenInfo.className = 'text-emerald-400 font-semibold';
-        }
-        if (expiraInfo) expiraInfo.textContent = `${res.token_expira_em_segundos}s restantes`;
-      } else {
-        if (tokenInfo) {
-          tokenInfo.textContent = 'Pronto para emitir na 1ª chamada';
-          tokenInfo.className = 'text-slate-400';
-        }
-        if (expiraInfo) expiraInfo.textContent = '-';
-      }
-
-      if (escoposInfo) escoposInfo.textContent = res.escopos_token || 'inputs:read, products:read, table-sessions:read';
-      lucide.createIcons();
-    }
-
-    function switchTab(tabId) {
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('bg-orange-500', 'text-white', 'shadow-md', 'shadow-orange-500/20');
-        btn.classList.add('text-slate-300', 'hover:bg-slate-700/50');
-      });
-
-      const activeBtn = document.getElementById(`tab-btn-${tabId}`);
-      if (activeBtn) {
-        activeBtn.classList.add('bg-orange-500', 'text-white', 'shadow-md', 'shadow-orange-500/20');
-        activeBtn.classList.remove('text-slate-300', 'hover:bg-slate-700/50');
-      }
-
-      ['dashboard', 'estoque', 'fichas', 'vendas', 'movimentacoes', 'sync'].forEach(t => {
-        const sec = document.getElementById(`tab-${t}`);
-        if (sec) sec.classList.toggle('hidden', t !== tabId);
-      });
-
-      if (tabId === 'estoque') renderTabelaInsumos();
-      if (tabId === 'fichas') renderListaCatalogo();
-      if (tabId === 'vendas') renderTabelaVendas();
-      if (tabId === 'movimentacoes') renderTabelaLedger();
-
-      lucide.createIcons();
-    }
-
-    function renderDashboard(data) {
-      document.getElementById('metric-total-itens').textContent = data.total_itens || 0;
-      document.getElementById('metric-total-bebidas').textContent = data.total_bebidas || 0;
-      document.getElementById('metric-total-insumos').textContent = data.total_insumos || 0;
-      document.getElementById('metric-total-alertas').textContent = data.total_alertas || 0;
-      document.getElementById('metric-vendas-rastreadas').textContent = state.vendas.length;
-      document.getElementById('metric-valor-estoque').textContent = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(data.valor_total_estoque || 0);
-
-      const onboarding = document.getElementById('onboarding-card');
-      if (data.total_itens === 0 && state.vendas.length === 0) {
-        onboarding.classList.remove('hidden');
-      } else {
-        onboarding.classList.add('hidden');
-      }
-
-      const containerAlertas = document.getElementById('secao-alertas-criticos');
-      const listaAlertas = document.getElementById('lista-alertas-criticos');
-
-      if (data.alertas_criticos && data.alertas_criticos.length > 0) {
-        containerAlertas.classList.remove('hidden');
-        listaAlertas.innerHTML = data.alertas_criticos.map(a => `
-          <div class="bg-slate-900 border border-red-800/60 rounded-xl p-3 flex items-center justify-between">
-            <div>
-              <p class="font-bold text-white text-xs">${a.insumo_nome}</p>
-              <p class="text-[11px] text-slate-400">Mín: ${a.estoque_minimo} ${a.unidade} &bull; Déficit: <span class="text-red-400 font-bold">${a.deficit} ${a.unidade}</span></p>
-            </div>
-            <button onclick="abrirModalAjuste(${a.insumo_id})" class="text-xs bg-red-600 hover:bg-red-500 text-white px-2.5 py-1 rounded-lg font-bold">Repor</button>
-          </div>
-        `).join('');
-      } else {
-        containerAlertas.classList.add('hidden');
-      }
-
-      const vendasBox = document.getElementById('dashboard-ultimas-vendas');
-      if (data.ultimos_pedidos && data.ultimos_pedidos.length > 0) {
-        vendasBox.innerHTML = data.ultimos_pedidos.map(p => `
-          <div class="bg-slate-900/80 border border-slate-700/60 rounded-xl p-3 text-xs flex justify-between items-center">
-            <div>
-              <span class="font-bold text-white">${p.quantidade}x ${p.produto_nome}</span>
-              ${p.complementos && p.complementos.length > 0 ? `<p class="text-[11px] text-amber-400">+ ${p.complementos.map(c => `${c.quantidade}x ${c.complemento_nome}`).join(', ')}</p>` : ''}
-              <p class="text-[10px] text-slate-400">Canal: ${p.canal || 'pdv'} &bull; Pedido #${p.order_id}</p>
-            </div>
-            <div class="text-right">
-              <span class="text-emerald-400 font-bold">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.preco_total || 0)}</span>
-              <p class="text-[10px] text-slate-400">${new Date(p.data_pedido).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
-            </div>
-          </div>
-        `).join('');
-      } else {
-        vendasBox.innerHTML = `<p class="text-xs text-slate-500 py-6 text-center">Nenhuma venda registrada ainda.</p>`;
-      }
-
-      const movBox = document.getElementById('dashboard-ultimas-movimentacoes');
-      if (data.ultimas_movimentacoes && data.ultimas_movimentacoes.length > 0) {
-        movBox.innerHTML = data.ultimas_movimentacoes.map(m => `
-          <div class="bg-slate-900/80 border border-slate-700/60 rounded-xl p-3 text-xs flex justify-between items-center">
-            <div>
-              <span class="font-semibold text-white">${m.insumo_nome}</span>
-              <p class="text-[10px] text-slate-400">${m.descricao}</p>
-            </div>
-            <div class="text-right font-mono">
-              <span class="${m.quantidade < 0 ? 'text-red-400' : 'text-emerald-400'} font-bold">
-                ${m.quantidade > 0 ? '+' : ''}${m.quantidade} ${m.insumo_unidade}
-              </span>
-              <p class="text-[10px] text-slate-500">Saldo: ${m.saldo_posterior}</p>
-            </div>
-          </div>
-        `).join('');
-      } else {
-        movBox.innerHTML = `<p class="text-xs text-slate-500 py-6 text-center">Nenhuma movimentação registrada.</p>`;
-      }
-
-      lucide.createIcons();
-    }
-
-    function renderTabelaInsumos() {
-      const tbody = document.getElementById('tabela-insumos-body');
-      const busca = (document.getElementById('filtro-busca-insumo')?.value || '').toLowerCase();
-      const cat = document.getElementById('filtro-categoria-insumo')?.value || '';
-      const statusFiltro = document.getElementById('filtro-status-insumo')?.value || '';
-
-      let filtrados = state.insumos.filter(i => {
-        const matchesBusca = i.nome.toLowerCase().includes(busca) || (i.codigo || '').toLowerCase().includes(busca);
-        const matchesCat = cat ? i.categoria === cat : true;
-        const isCritico = i.quantidade <= i.estoque_minimo && i.estoque_minimo > 0;
-        const matchesStatus = statusFiltro === 'critico' ? isCritico : (statusFiltro === 'normal' ? !isCritico : true);
-        return matchesBusca && matchesCat && matchesStatus;
-      });
-
-      if (filtrados.length === 0) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="7" class="p-8 text-center text-slate-400 text-xs space-y-2">
-              <i data-lucide="package-search" class="w-8 h-8 mx-auto text-slate-500"></i>
-              <p class="font-bold text-slate-300">Nenhum insumo ou bebida encontrado</p>
-              <p class="text-slate-500">Sincronize com a Takeat ou clique em "+ Novo Item" para cadastrar.</p>
-            </td>
-          </tr>
-        `;
-        lucide.createIcons();
-        return;
-      }
-
-      tbody.innerHTML = filtrados.map(item => {
-        const isCritico = item.quantidade <= item.estoque_minimo && item.estoque_minimo > 0;
-        const isZerado = item.quantidade <= 0;
-
-        let badgeStatus = `<span class="px-2 py-0.5 rounded text-[11px] font-bold badge-ok">Normal</span>`;
-        if (isZerado) {
-          badgeStatus = `<span class="px-2 py-0.5 rounded text-[11px] font-bold badge-critico">Esgotado</span>`;
-        } else if (isCritico) {
-          badgeStatus = `<span class="px-2 py-0.5 rounded text-[11px] font-bold badge-alerta">Repor</span>`;
-        }
-
-        return `
-          <tr class="hover:bg-slate-800/50 transition">
-            <td class="p-3.5">
-              <span class="font-bold text-white">${item.nome}</span>
-              <p class="text-[10px] text-slate-500 font-mono">${item.codigo || '-'}</p>
-            </td>
-            <td class="p-3.5">
-              <span class="text-xs px-2 py-0.5 rounded-full ${item.categoria === 'bebida' ? 'bg-purple-900/40 text-purple-300 border border-purple-800/40' : 'bg-slate-800 text-slate-400'}">
-                ${item.categoria}
-              </span>
-            </td>
-            <td class="p-3.5 text-right font-mono font-bold ${isCritico ? 'text-red-400' : 'text-slate-100'}">
-              ${item.quantidade} <span class="text-slate-400 font-normal">${item.unidade}</span>
-            </td>
-            <td class="p-3.5 text-right font-mono text-slate-400">
-              ${item.estoque_minimo} ${item.unidade}
-            </td>
-            <td class="p-3.5">${badgeStatus}</td>
-            <td class="p-3.5 text-right font-mono text-slate-300">
-              ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.preco_unitario || 0)}
-            </td>
-            <td class="p-3.5 text-center">
-              <button onclick="abrirModalAjuste(${item.id})" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-600 transition font-medium">
-                Ajustar Saldo
-              </button>
-            </td>
-          </tr>
-        `;
-      }).join('');
-
-      lucide.createIcons();
-    }
-
-    function switchFichaSubTab(sub) {
-      state.fichaSubTab = sub;
-      document.getElementById('btn-sub-produtos').className = sub === 'produtos'
-        ? 'px-4 py-1.5 rounded-lg text-xs font-bold bg-orange-500 text-white transition'
-        : 'px-4 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition';
-
-      document.getElementById('btn-sub-complementos').className = sub === 'complementos'
-        ? 'px-4 py-1.5 rounded-lg text-xs font-bold bg-orange-500 text-white transition'
-        : 'px-4 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition';
-
-      state.selectedItem = null;
-      renderListaCatalogo();
-      limparEditorFicha();
-    }
-
-    function renderListaCatalogo() {
-      const container = document.getElementById('lista-catalogo-container');
-      const busca = (document.getElementById('filtro-catalogo-item')?.value || '').toLowerCase();
-      const itens = state.fichaSubTab === 'produtos' ? state.produtos : state.complementos;
-
-      const filtrados = itens.filter(i => i.nome.toLowerCase().includes(busca) || (i.categoria_nome || '').toLowerCase().includes(busca));
-
-      if (filtrados.length === 0) {
-        container.innerHTML = `
-          <div class="h-full flex flex-col items-center justify-center text-slate-500 text-xs py-8 text-center p-4">
-            <i data-lucide="book" class="w-8 h-8 mb-2 text-slate-600"></i>
-            <p class="font-bold text-slate-400">Nenhum ${state.fichaSubTab === 'produtos' ? 'produto' : 'complemento'} carregado</p>
-            <p class="text-[11px] text-slate-500 mt-1">Sincronize o catálogo com a Takeat para visualizar seus itens reais.</p>
-          </div>
-        `;
-        lucide.createIcons();
-        return;
-      }
-
-      container.innerHTML = filtrados.map(item => {
-        const isSelected = state.selectedItem && state.selectedItem.id === item.id;
-        return `
-          <div onclick="selecionarItemFicha(${item.id})" class="p-3 rounded-xl border cursor-pointer transition flex items-center justify-between ${isSelected ? 'bg-orange-500/20 border-orange-500 text-white' : 'bg-slate-800/80 border-slate-700/60 hover:bg-slate-800 text-slate-300'}">
-            <div>
-              <p class="font-bold text-xs">${item.nome}</p>
-              <p class="text-[10px] text-slate-400">${item.categoria_nome || 'Sem categoria'}</p>
-            </div>
-            <div>
-              ${item.tem_ficha
-                ? `<span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">Com Ficha (${item.qtd_insumos})</span>`
-                : `<span class="text-[10px] bg-slate-700 text-slate-400 px-2 py-0.5 rounded-full">Sem Ficha</span>`
-              }
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    async function selecionarItemFicha(id) {
-      const itens = state.fichaSubTab === 'produtos' ? state.produtos : state.complementos;
-      state.selectedItem = itens.find(i => i.id === id);
-
-      renderListaCatalogo();
-
-      document.getElementById('editor-tipo-badge').textContent = state.fichaSubTab === 'produtos' ? 'Produto' : 'Complemento / Adicional';
-      document.getElementById('editor-item-nome').textContent = state.selectedItem.nome;
-      document.getElementById('editor-item-categoria').textContent = `Categoria: ${state.selectedItem.categoria_nome || 'Geral'} &bull; ID: ${state.selectedItem.id}`;
-      document.getElementById('btn-salvar-ficha').disabled = false;
-      document.getElementById('form-add-ingrediente').classList.remove('hidden');
-
-      const url = state.fichaSubTab === 'produtos' ? `/api/fichas/produto/${id}` : `/api/fichas/complemento/${id}`;
-      const res = await fetch(url).then(r => r.json()).catch(() => []);
-      state.selectedFichaItens = res || [];
-      renderEditorIngredientes();
-    }
-
-    function renderEditorIngredientes() {
-      const lista = document.getElementById('editor-ingredientes-lista');
-
-      if (!state.selectedFichaItens || state.selectedFichaItens.length === 0) {
-        lista.innerHTML = `
-          <div class="h-full flex flex-col items-center justify-center text-slate-500 text-xs py-8 text-center p-4">
-            <i data-lucide="utensils" class="w-8 h-8 mb-2 stroke-1"></i>
-            Nenhum insumo configurado na receita deste item ainda.
-            <span class="text-[11px] text-orange-400 mt-1">Adicione insumos no formulário abaixo!</span>
-          </div>
-        `;
-        lucide.createIcons();
-        return;
-      }
-
-      lista.innerHTML = state.selectedFichaItens.map((item, idx) => `
-        <div class="bg-slate-800 border border-slate-700 rounded-xl p-3 flex items-center justify-between text-xs">
-          <div class="flex items-center gap-2">
-            <div class="w-7 h-7 rounded-lg bg-orange-500/10 text-orange-400 flex items-center justify-center font-bold">
-              ${idx + 1}
-            </div>
-            <div>
-              <p class="font-bold text-white">${item.insumo_nome}</p>
-              <p class="text-[10px] text-slate-400">Saldo em estoque: ${item.insumo_estoque ?? '-'} ${item.insumo_unidade ?? ''}</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-3">
-            <span class="font-mono font-bold text-amber-400 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
-              Consome: ${item.quantidade_consumida} ${item.unidade_consumida}
-            </span>
-            <button onclick="removerInsumoDaFicha(${idx})" class="text-red-400 hover:text-red-300 p-1">
-              <i data-lucide="trash-2" class="w-4 h-4"></i>
-            </button>
-          </div>
-        </div>
-      `).join('');
-
-      lucide.createIcons();
-    }
-
-    function adicionarInsumoNaFicha() {
-      const select = document.getElementById('select-novo-insumo');
-      const inputQtd = document.getElementById('input-qtd-consumida');
-
-      const insumoId = Number(select.value);
-      const qtd = parseFloat(inputQtd.value);
-
-      if (!insumoId || isNaN(qtd) || qtd <= 0) {
-        alert('Selecione um insumo e informe uma quantidade válida maior que zero.');
-        return;
-      }
-
-      const insumo = state.insumos.find(i => i.id === insumoId);
-      if (!insumo) return;
-
-      const existing = state.selectedFichaItens.find(i => i.insumo_id === insumoId);
-      if (existing) {
-        existing.quantidade_consumida = qtd;
-      } else {
-        state.selectedFichaItens.push({
-          insumo_id: insumo.id,
-          insumo_nome: insumo.nome,
-          insumo_unidade: insumo.unidade,
-          insumo_estoque: insumo.quantidade,
-          quantidade_consumida: qtd,
-          unidade_consumida: insumo.unidade,
-        });
-      }
-
-      inputQtd.value = '';
-      select.value = '';
-      renderEditorIngredientes();
-    }
-
-    function removerInsumoDaFicha(idx) {
-      state.selectedFichaItens.splice(idx, 1);
-      renderEditorIngredientes();
-    }
-
-    async function salvarFichaAtual() {
-      if (!state.selectedItem) return;
-
-      const url = state.fichaSubTab === 'produtos'
-        ? `/api/fichas/produto/${state.selectedItem.id}`
-        : `/api/fichas/complemento/${state.selectedItem.id}`;
-
-      try {
-        await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            itens: state.selectedFichaItens.map(i => ({
-              insumo_id: i.insumo_id,
-              quantidade_consumida: i.quantidade_consumida,
-              unidade_consumida: i.unidade_consumida,
-            }))
-          })
-        });
-        alert('Ficha Técnica salva com sucesso!');
-        await carregarDados();
-        renderListaCatalogo();
-      } catch (err) {
-        alert('Erro ao salvar ficha: ' + err.message);
-      }
-    }
-
-    function limparEditorFicha() {
-      document.getElementById('editor-tipo-badge').textContent = 'Item';
-      document.getElementById('editor-item-nome').textContent = 'Selecione um item ao lado';
-      document.getElementById('editor-item-categoria').textContent = 'Para ver ou configurar a receita de insumos';
-      document.getElementById('btn-salvar-ficha').disabled = true;
-      document.getElementById('form-add-ingrediente').classList.add('hidden');
-      document.getElementById('editor-ingredientes-lista').innerHTML = `
-        <div class="h-full flex flex-col items-center justify-center text-slate-500 text-xs">
-          <i data-lucide="book-marked" class="w-10 h-10 mb-2 stroke-1"></i>
-          Clique em um produto ou complemento à esquerda para editar sua ficha técnica.
-        </div>
-      `;
-      lucide.createIcons();
-    }
-
-    function popularSelectInsumos() {
-      const select = document.getElementById('select-novo-insumo');
-      if (!select) return;
-      select.innerHTML = '<option value="">Selecione o Insumo...</option>' + state.insumos.map(i => `
-        <option value="${i.id}">${i.nome} (${i.unidade}) - Saldo: ${i.quantidade}</option>
-      `).join('');
-    }
-
-    function renderTabelaVendas() {
-      const tbody = document.getElementById('tabela-vendas-body');
-
-      if (state.vendas.length === 0) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="6" class="p-8 text-center text-slate-500 text-xs">
-              <i data-lucide="shopping-cart" class="w-8 h-8 mx-auto text-slate-600 mb-2"></i>
-              Nenhuma venda rastreada ainda. Clique em "Rastrear Vendas Takeat Agora" para puxar as comandas finalizadas.
-            </td>
-          </tr>
-        `;
-        lucide.createIcons();
-        return;
-      }
-
-      tbody.innerHTML = state.vendas.map(v => `
-        <tr class="hover:bg-slate-800/50 transition">
-          <td class="p-3.5">
-            <span class="font-bold text-white font-mono">#${v.order_id}</span>
-            <p class="text-[10px] text-slate-400">Sessão: ${v.session_id}</p>
-          </td>
-          <td class="p-3.5">
-            <span class="font-bold text-slate-100">${v.quantidade}x ${v.produto_nome}</span>
-            <p class="text-[10px] text-emerald-400 font-mono">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v.preco_total || 0)}</p>
-          </td>
-          <td class="p-3.5">
-            ${v.complementos && v.complementos.length > 0
-              ? v.complementos.map(c => `<span class="inline-block bg-slate-900 border border-slate-700 text-amber-300 text-[11px] px-2 py-0.5 rounded-lg mr-1 mb-1">+ ${c.quantidade}x ${c.complemento_nome}</span>`).join('')
-              : '<span class="text-xs text-slate-500">-</span>'
-            }
-          </td>
-          <td class="p-3.5">
-            <span class="text-xs text-slate-300 uppercase">${v.canal || 'pdv'}</span>
-            ${v.mesa_numero ? `<p class="text-[10px] text-slate-400">Mesa ${v.mesa_numero}</p>` : ''}
-            ${v.comanda_numero ? `<p class="text-[10px] text-slate-400">Comanda ${v.comanda_numero}</p>` : ''}
-          </td>
-          <td class="p-3.5">
-            ${v.deducoes_estoque && v.deducoes_estoque.length > 0
-              ? v.deducoes_estoque.map(d => `<span class="inline-block bg-red-950/40 border border-red-800/40 text-red-300 text-[11px] font-mono px-2 py-0.5 rounded-lg mr-1 mb-1">${d.quantidade} ${d.insumo_unidade} (${d.insumo_nome})</span>`).join('')
-              : '<span class="text-xs text-amber-500">Sem ficha técnica cadastrada</span>'
-            }
-          </td>
-          <td class="p-3.5 text-right text-xs text-slate-400">
-            ${new Date(v.data_pedido).toLocaleString('pt-BR')}
-          </td>
-        </tr>
-      `).join('');
-    }
-
-    function renderTabelaLedger() {
-      const tbody = document.getElementById('tabela-ledger-body');
-
-      if (state.movimentacoes.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-500 text-xs">Nenhuma movimentação registrada no Ledger ainda.</td></tr>`;
-        return;
-      }
-
-      tbody.innerHTML = state.movimentacoes.map(m => {
-        let tipoBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-900/40 text-blue-300 border border-blue-800/40">${m.tipo}</span>`;
-        if (m.tipo === 'SAIDA_VENDA') {
-          tipoBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-900/40 text-purple-300 border border-purple-800/40">Venda</span>`;
-        } else if (m.tipo === 'ENTRADA_COMPRA') {
-          tipoBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-900/40 text-emerald-300 border border-emerald-800/40">Entrada</span>`;
-        } else if (m.tipo === 'PERDA') {
-          tipoBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-900/40 text-red-300 border border-red-800/40">Perda</span>`;
-        }
-
-        return `
-          <tr class="hover:bg-slate-800/50 transition">
-            <td class="p-3.5 text-xs text-slate-400 font-mono">${new Date(m.data_hora).toLocaleString('pt-BR')}</td>
-            <td class="p-3.5 font-bold text-white text-xs">${m.insumo_nome}</td>
-            <td class="p-3.5">${tipoBadge}</td>
-            <td class="p-3.5 text-right font-mono font-bold ${m.quantidade < 0 ? 'text-red-400' : 'text-emerald-400'}">
-              ${m.quantidade > 0 ? '+' : ''}${m.quantidade} ${m.insumo_unidade}
-            </td>
-            <td class="p-3.5 text-right font-mono text-slate-400 text-xs">${m.saldo_anterior}</td>
-            <td class="p-3.5 text-right font-mono text-slate-100 font-bold text-xs">${m.saldo_posterior}</td>
-            <td class="p-3.5 text-xs text-slate-300">${m.descricao}</td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    function abrirModalAjuste(insumoId) {
-      const insumo = state.insumos.find(i => i.id === insumoId);
-      if (!insumo) return;
-      state.insumoAjusteAlvo = insumo;
-
-      document.getElementById('modal-ajuste-item-nome').textContent = `${insumo.nome} (${insumo.unidade})`;
-      document.getElementById('modal-ajuste-saldo-atual').textContent = `${insumo.quantidade} ${insumo.unidade}`;
-      document.getElementById('modal-ajuste-quantidade').value = '';
-      document.getElementById('modal-ajuste-descricao').value = '';
-      document.getElementById('modal-ajuste').classList.remove('hidden');
-    }
-
-    function fecharModalAjuste() {
-      document.getElementById('modal-ajuste').classList.add('hidden');
-      state.insumoAjusteAlvo = null;
-    }
-
-    async function salvarAjusteEstoque() {
-      if (!state.insumoAjusteAlvo) return;
-      const tipo = document.getElementById('modal-ajuste-tipo').value;
-      let qtd = parseFloat(document.getElementById('modal-ajuste-quantidade').value);
-      const desc = document.getElementById('modal-ajuste-descricao').value || 'Ajuste manual';
-
-      if (isNaN(qtd) || qtd === 0) {
-        alert('Informe uma quantidade válida.');
-        return;
-      }
-
-      if (tipo === 'PERDA' && qtd > 0) qtd = -qtd;
-
-      try {
-        await fetch(`/api/insumos/${state.insumoAjusteAlvo.id}/ajuste`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ quantidade: qtd, tipo, descricao: desc })
-        });
-        fecharModalAjuste();
-        await carregarDados();
-        renderTabelaInsumos();
-      } catch (err) {
-        alert('Erro ao salvar ajuste: ' + err.message);
-      }
-    }
-
-    function abrirModalNovoInsumo() {
-      document.getElementById('novo-nome').value = '';
-      document.getElementById('novo-quantidade').value = '0';
-      document.getElementById('novo-minimo').value = '5';
-      document.getElementById('novo-preco').value = '0.00';
-      document.getElementById('novo-codigo').value = '';
-      document.getElementById('modal-novo-insumo').classList.remove('hidden');
-    }
-
-    function fecharModalNovoInsumo() {
-      document.getElementById('modal-novo-insumo').classList.add('hidden');
-    }
-
-    async function salvarNovoInsumo() {
-      const nome = document.getElementById('novo-nome').value.trim();
-      const categoria = document.getElementById('novo-categoria').value;
-      const unidade = document.getElementById('novo-unidade').value;
-      const quantidade = parseFloat(document.getElementById('novo-quantidade').value) || 0;
-      const estoque_minimo = parseFloat(document.getElementById('novo-minimo').value) || 0;
-      const preco_unitario = parseFloat(document.getElementById('novo-preco').value) || 0;
-      const codigo = document.getElementById('novo-codigo').value.trim() || undefined;
-
-      if (!nome) {
-        alert('O nome do item é obrigatório.');
-        return;
-      }
-
-      try {
-        await fetch('/api/insumos', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nome, categoria, unidade, quantidade, estoque_minimo, preco_unitario, codigo })
-        });
-        fecharModalNovoInsumo();
-        await carregarDados();
-        renderTabelaInsumos();
-      } catch (err) {
-        alert('Erro ao cadastrar insumo: ' + err.message);
-      }
-    }
-
-    function showToast(message, type = 'info') {
-      const container = document.getElementById('toast-container');
-      if (!container) return;
-      const toast = document.createElement('div');
-      const bg = type === 'success' ? 'bg-emerald-950/95 border-emerald-500 text-emerald-200' :
-                 type === 'error' ? 'bg-red-950/95 border-red-500 text-red-200' :
-                 'bg-slate-900/95 border-orange-500 text-slate-100';
-      toast.className = `p-3.5 rounded-xl border shadow-2xl text-xs font-medium backdrop-blur-md transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto flex items-center justify-between gap-3 ${bg}`;
-      toast.innerHTML = `<span>${message}</span><button onclick="this.parentElement.remove()" class="text-xs opacity-60 hover:opacity-100 font-bold ml-2">&times;</button>`;
-      container.appendChild(toast);
-      requestAnimationFrame(() => {
-        toast.classList.remove('translate-y-2', 'opacity-0');
-      });
-      setTimeout(() => {
-        toast.classList.add('opacity-0', 'translate-y-2');
-        setTimeout(() => toast.remove(), 300);
-      }, 5000);
     }
 
     function abrirModalChave() {
-      const modal = document.getElementById('modal-chave');
-      if (modal) {
-        modal.classList.remove('hidden');
-        const inp = document.getElementById('input-api-key-modal');
-        if (inp) inp.focus();
-        lucide.createIcons();
-      }
+      document.getElementById('modal-chave').classList.remove('hidden');
+      const input = document.getElementById('input-api-key-modal');
+      if (input) input.focus();
+      lucide.createIcons();
     }
 
     function fecharModalChave() {
-      const modal = document.getElementById('modal-chave');
-      if (modal) modal.classList.add('hidden');
+      document.getElementById('modal-chave').classList.add('hidden');
       const msg = document.getElementById('msg-chave-modal');
       if (msg) msg.classList.add('hidden');
     }
 
     function toggleKeyVisibility(inputId) {
       const el = document.getElementById(inputId);
-      if (el) {
-        el.type = el.type === 'password' ? 'text' : 'password';
-      }
+      if (el) el.type = el.type === 'password' ? 'text' : 'password';
     }
 
     async function salvarChave(inputId) {
       const input = document.getElementById(inputId);
       const key = (input ? input.value : '').trim();
-      const msgEl = document.getElementById(inputId === 'input-api-key-modal' ? 'msg-chave-modal' : 'msg-chave-sync');
-      const btn = document.getElementById(inputId === 'input-api-key-modal' ? 'btn-salvar-chave-modal' : 'btn-salvar-chave-sync');
+      const msgEl = document.getElementById('msg-chave-modal');
+      const btn = document.getElementById('btn-salvar-chave-modal');
 
       if (!key) {
-        if (msgEl) {
-          msgEl.className = 'p-3 rounded-xl text-xs bg-red-950/80 border border-red-700 text-red-300';
-          msgEl.textContent = 'Por favor, cole a sua chave da Takeat.';
-          msgEl.classList.remove('hidden');
-        }
+        msgEl.className = 'p-3 rounded-xl text-xs bg-red-950 border border-red-700 text-red-200';
+        msgEl.textContent = 'Por favor, cole a sua chave da Takeat.';
+        msgEl.classList.remove('hidden');
         return;
       }
 
-      const originalText = btn ? btn.innerHTML : '';
-      if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = `<span class="animate-spin mr-1.5">⏳</span> Validando com Takeat...`;
-      }
-
-      if (msgEl) {
-        msgEl.className = 'p-3 rounded-xl text-xs bg-slate-900 text-slate-300 border border-slate-700';
-        msgEl.textContent = 'Verificando credenciais junto aos servidores Takeat...';
-        msgEl.classList.remove('hidden');
-      }
+      btn.disabled = true;
+      btn.innerHTML = `<span class="animate-spin mr-1">⏳</span> Validando...`;
 
       try {
         const res = await fetch('/api/config/key', {
@@ -1416,94 +330,438 @@
           body: JSON.stringify({ apiKey: key })
         });
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Falha ao validar chave');
 
-        if (!res.ok) {
-          throw new Error(data.error || 'Erro ao validar chave');
-        }
-
-        if (msgEl) {
-          msgEl.className = 'p-3 rounded-xl text-xs bg-emerald-950 border border-emerald-600 text-emerald-200';
-          msgEl.textContent = '✓ ' + (data.message || 'Chave validada e conectada com sucesso!');
-          msgEl.classList.remove('hidden');
-        }
-
-        showToast('✓ Conexão com a Takeat estabelecida com sucesso!', 'success');
-        if (input) input.value = '';
+        msgEl.className = 'p-3 rounded-xl text-xs bg-emerald-950 border border-emerald-600 text-emerald-200';
+        msgEl.textContent = '✓ ' + (data.message || 'Chave validada com sucesso!');
+        msgEl.classList.remove('hidden');
+        showToast('✓ Takeat conectada com sucesso!', 'success');
 
         setTimeout(async () => {
           fecharModalChave();
-          await carregarStatus();
-          await carregarDados();
-          await sincronizarTudo();
+          await verificarStatusTakeat();
+          await sincronizarVendasTakeat();
         }, 1200);
 
       } catch (err) {
-        if (msgEl) {
-          msgEl.className = 'p-3 rounded-xl text-xs bg-red-950 border border-red-700 text-red-200';
-          msgEl.textContent = '❌ Falha: ' + err.message;
-          msgEl.classList.remove('hidden');
-        }
-        showToast('Erro ao validar chave: ' + err.message, 'error');
+        msgEl.className = 'p-3 rounded-xl text-xs bg-red-950 border border-red-700 text-red-200';
+        msgEl.textContent = '❌ ' + err.message;
+        msgEl.classList.remove('hidden');
       } finally {
-        if (btn) {
-          btn.disabled = false;
-          btn.innerHTML = originalText;
-          lucide.createIcons();
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> Salvar e Conectar`;
+        lucide.createIcons();
+      }
+    }
+
+    // -------------------------------------------------------------
+    // CARREGAR E RENDERIZAR CONTAGEM DIÁRIA
+    // -------------------------------------------------------------
+    async function carregarContagem(data) {
+      try {
+        const res = await fetch(`/api/contagem/hoje?data=${data}`).then(r => r.json());
+        state.contagem = res;
+
+        // Preenche campos do cabeçalho
+        document.getElementById('cabecalho-pizzaria').value = res.pizzaria || 'PIZZARIA';
+        document.getElementById('cabecalho-responsavel').value = res.responsavel || '';
+        document.getElementById('cabecalho-hora-inicial').value = res.hora_inicial || '';
+        document.getElementById('cabecalho-hora-final').value = res.hora_final || '';
+
+        // Status do turno
+        const statusBadge = document.getElementById('badge-turno-status');
+        const btnTurno = document.getElementById('btn-finalizar-turno');
+        const labelBtnTurno = document.getElementById('label-btn-turno');
+
+        if (res.status === 'FINALIZADO') {
+          statusBadge.textContent = 'TURNO FECHADO';
+          statusBadge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 border border-slate-400';
+          labelBtnTurno.textContent = 'Reabrir Turno';
+          btnTurno.className = 'w-full bg-slate-600 hover:bg-slate-700 text-white font-bold py-1.5 px-2 rounded text-xs transition shadow flex items-center justify-center gap-1';
+        } else {
+          statusBadge.textContent = 'TURNO ABERTO';
+          statusBadge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300';
+          labelBtnTurno.textContent = 'Fechar Turno';
+          btnTurno.className = 'w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-2 rounded text-xs transition shadow flex items-center justify-center gap-1';
+        }
+
+        renderTabela(res.itens || []);
+      } catch (err) {
+        showToast('Erro ao carregar folha do dia: ' + err.message, 'error');
+      }
+    }
+
+    function renderTabela(itens) {
+      const tbody = document.getElementById('tabela-contagem-corpo');
+      tbody.innerHTML = '';
+
+      let totalItens = itens.length;
+      let totalVendas = 0;
+      let totalDivergencias = 0;
+
+      itens.forEach((item, index) => {
+        totalVendas += Number(item.venda || 0);
+        if (item.divergencia !== 0) totalDivergencias++;
+
+        const tr = document.createElement('tr');
+        tr.className = `hover:bg-blue-50/40 transition border-b border-slate-200 ${item.verificado ? 'bg-slate-50 opacity-90' : ''}`;
+
+        // Badge Divergência
+        let divBadge = `<span class="text-slate-500 font-bold">0</span>`;
+        if (item.divergencia > 0) {
+          divBadge = `<span class="bg-red-100 text-red-700 font-black px-2 py-0.5 rounded border border-red-300 inline-block shadow-sm">Falta ${item.divergencia}</span>`;
+        } else if (item.divergencia < 0) {
+          divBadge = `<span class="bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded border border-blue-300 inline-block">+${Math.abs(item.divergencia)} sobrando</span>`;
+        }
+
+        tr.innerHTML = `
+          <!-- PRODUTO -->
+          <td class="p-2 text-left font-bold text-slate-900 border-r border-slate-300 group">
+            <div class="flex items-center justify-between">
+              <span class="tracking-tight uppercase">${item.nome_produto}</span>
+              <button onclick="removerItem(${item.id})" class="no-print opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-600 transition px-1 text-sm font-bold" title="Remover item">&times;</button>
+            </div>
+          </td>
+
+          <!-- PRÉ VENDA -->
+          <td class="p-1 border-r border-slate-300 text-center">
+            <input type="number" step="any" value="${item.pre_venda || 0}" 
+              oninput="aoEditarItem(${item.id}, 'pre_venda', this.value)"
+              onfocus="this.select()"
+              class="w-full text-center font-bold bg-transparent hover:bg-slate-100 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 rounded p-1">
+          </td>
+
+          <!-- ENTRADA ESTOQUE -->
+          <td class="p-1 border-r border-slate-300 text-center">
+            <input type="number" step="any" value="${item.entrada_estoque || 0}" 
+              oninput="aoEditarItem(${item.id}, 'entrada_estoque', this.value)"
+              onfocus="this.select()"
+              class="w-full text-center font-bold bg-transparent hover:bg-slate-100 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 rounded p-1">
+          </td>
+
+          <!-- VENDA (TAKEAT) -->
+          <td class="p-1 border-r border-slate-300 text-center bg-blue-50/50">
+            <input type="number" step="any" value="${item.venda || 0}" 
+              oninput="aoEditarItem(${item.id}, 'venda', this.value)"
+              onfocus="this.select()"
+              class="w-full text-center font-black text-blue-900 bg-transparent hover:bg-blue-100/50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 rounded p-1"
+              title="Vendas registradas no turno (Takeat)">
+          </td>
+
+          <!-- PÓS VENDA -->
+          <td class="p-1 border-r border-slate-300 text-center">
+            <input type="number" step="any" value="${item.pos_venda || 0}" 
+              oninput="aoEditarItem(${item.id}, 'pos_venda', this.value)"
+              onfocus="this.select()"
+              class="w-full text-center font-bold text-slate-900 bg-transparent hover:bg-slate-100 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 rounded p-1">
+          </td>
+
+          <!-- DIVERGÊNCIA -->
+          <td class="p-1.5 border-r border-slate-300 text-center" id="div-badge-${item.id}">
+            ${divBadge}
+          </td>
+
+          <!-- VERIFICA (CHECKBOX) -->
+          <td class="p-1 text-center">
+            <input type="checkbox" ${item.verificado ? 'checked' : ''} 
+              onchange="aoEditarItem(${item.id}, 'verificado', this.checked)"
+              class="w-4 h-4 text-blue-600 rounded border-slate-400 focus:ring-blue-500 cursor-pointer">
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('resumo-total-itens').textContent = totalItens;
+      document.getElementById('resumo-total-vendas').textContent = totalVendas;
+      
+      const divResumo = document.getElementById('resumo-total-divergencias');
+      if (totalDivergencias > 0) {
+        divResumo.textContent = `${totalDivergencias} com divergência`;
+        divResumo.className = 'text-base font-black text-red-600';
+      } else {
+        divResumo.textContent = '0 (100% batendo)';
+        divResumo.className = 'text-base font-black text-emerald-600';
+      }
+
+      lucide.createIcons();
+    }
+
+    // -------------------------------------------------------------
+    // EDIÇÃO EM TEMPO REAL E AUTO-SAVE
+    // -------------------------------------------------------------
+    function aoEditarItem(itemId, campo, valor) {
+      if (!state.contagem) return;
+      const item = state.contagem.itens.find(i => i.id === itemId);
+      if (!item) return;
+
+      if (campo === 'verificado') {
+        item.verificado = valor ? 1 : 0;
+      } else {
+        item[campo] = parseFloat(valor) || 0;
+      }
+
+      // Recalcula divergência na hora
+      const pre = Number(item.pre_venda || 0);
+      const entrada = Number(item.entrada_estoque || 0);
+      const venda = Number(item.venda || 0);
+      const pos = Number(item.pos_venda || 0);
+      item.divergencia = (pre + entrada - venda) - pos;
+
+      // Atualiza célula de divergência visualmente
+      const badgeEl = document.getElementById(`div-badge-${itemId}`);
+      if (badgeEl) {
+        if (item.divergencia > 0) {
+          badgeEl.innerHTML = `<span class="bg-red-100 text-red-700 font-black px-2 py-0.5 rounded border border-red-300 inline-block shadow-sm">Falta ${item.divergencia}</span>`;
+        } else if (item.divergencia < 0) {
+          badgeEl.innerHTML = `<span class="bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded border border-blue-300 inline-block">+${Math.abs(item.divergencia)} sobrando</span>`;
+        } else {
+          badgeEl.innerHTML = `<span class="text-slate-500 font-bold">0</span>`;
         }
       }
+
+      // Atualiza os totais
+      atualizarTotaisLocais();
+
+      // Debounce do salvamento no servidor
+      clearTimeout(state.debounceTimers[itemId]);
+      state.debounceTimers[itemId] = setTimeout(async () => {
+        try {
+          await fetch('/api/contagem/item', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: itemId,
+              pre_venda: item.pre_venda,
+              entrada_estoque: item.entrada_estoque,
+              venda: item.venda,
+              pos_venda: item.pos_venda,
+              verificado: item.verificado
+            })
+          });
+        } catch (e) {
+          console.error('Erro ao salvar item:', e);
+        }
+      }, 400);
     }
 
-    async function dispararSyncInsumos() {
+    function atualizarTotaisLocais() {
+      if (!state.contagem || !state.contagem.itens) return;
+      let totalVendas = 0;
+      let totalDiv = 0;
+
+      for (const item of state.contagem.itens) {
+        totalVendas += Number(item.venda || 0);
+        if (item.divergencia !== 0) totalDiv++;
+      }
+
+      document.getElementById('resumo-total-vendas').textContent = totalVendas;
+      const divResumo = document.getElementById('resumo-total-divergencias');
+      if (totalDiv > 0) {
+        divResumo.textContent = `${totalDiv} com divergência`;
+        divResumo.className = 'text-base font-black text-red-600';
+      } else {
+        divResumo.textContent = '0 (100% batendo)';
+        divResumo.className = 'text-base font-black text-emerald-600';
+      }
+    }
+
+    async function salvarCabecalho() {
+      if (!state.contagem) return;
+      const pizzaria = document.getElementById('cabecalho-pizzaria').value.trim();
+      const responsavel = document.getElementById('cabecalho-responsavel').value.trim();
+      const hora_inicial = document.getElementById('cabecalho-hora-inicial').value;
+      const hora_final = document.getElementById('cabecalho-hora-final').value;
+
       try {
-        showToast('Sincronizando insumos com Takeat (/v1/inputs)...', 'info');
-        const res = await fetch('/api/sync/insumos', { method: 'POST' }).then(r => r.json());
-        if (res.error) throw new Error(res.error);
-        showToast(`✓ Insumos sincronizados: ${res.criados} criados, ${res.atualizados} atualizados.`, 'success');
-        await carregarDados();
+        await fetch('/api/contagem/cabecalho', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contagemId: state.contagem.id,
+            pizzaria,
+            responsavel,
+            hora_inicial,
+            hora_final
+          })
+        });
+        showToast('Cabeçalho atualizado!', 'info');
+      } catch (e) {
+        showToast('Erro ao salvar cabeçalho', 'error');
+      }
+    }
+
+    async function alternarStatusTurno() {
+      if (!state.contagem) return;
+      const novoStatus = state.contagem.status === 'FINALIZADO' ? 'ABERTO' : 'FINALIZADO';
+
+      try {
+        await fetch('/api/contagem/cabecalho', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contagemId: state.contagem.id,
+            status: novoStatus
+          })
+        });
+
+        await carregarContagem(state.contagem.data);
+        showToast(novoStatus === 'FINALIZADO' ? '✓ Turno finalizado com sucesso!' : 'Turno reaberto para edição.', 'success');
+      } catch (e) {
+        showToast('Erro ao alterar status do turno', 'error');
+      }
+    }
+
+    async function trocarDataContagem(novaData) {
+      await carregarContagem(novaData);
+    }
+
+    // -------------------------------------------------------------
+    // SINCRONIZAÇÃO DE VENDAS TAKEA T
+    // -------------------------------------------------------------
+    async function sincronizarVendasTakeat() {
+      if (!state.contagem) return;
+      const btn = document.getElementById('btn-sync-vendas');
+      const originalText = btn.innerHTML;
+
+      btn.disabled = true;
+      btn.innerHTML = `<span class="animate-spin mr-1">⏳</span> Sincronizando Takeat...`;
+
+      try {
+        const res = await fetch('/api/contagem/sync-takeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contagemId: state.contagem.id })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Erro ao sincronizar');
+
+        showToast(data.message || '✓ Vendas sincronizadas com sucesso!', 'success');
+        await carregarContagem(state.contagem.data);
       } catch (err) {
-        showToast('Falha na sincronização de insumos: ' + err.message, 'error');
-        if (err.message.includes('401') || err.message.includes('invalid_client')) abrirModalChave();
+        showToast('Aviso: ' + err.message, 'error');
+        if (err.message.includes('401') || err.message.includes('invalid_client')) {
+          abrirModalChave();
+        }
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        lucide.createIcons();
       }
     }
 
-    async function dispararSyncCatalogo() {
+    // -------------------------------------------------------------
+    // ADICIONAR E REMOVER PRODUTOS
+    // -------------------------------------------------------------
+    function abrirModalAddProduto() {
+      document.getElementById('modal-add-produto').classList.remove('hidden');
+      const input = document.getElementById('input-novo-produto-nome');
+      input.value = '';
+      input.focus();
+    }
+
+    function fecharModalAddProduto() {
+      document.getElementById('modal-add-produto').classList.add('hidden');
+    }
+
+    async function salvarNovoProduto() {
+      if (!state.contagem) return;
+      const nome = document.getElementById('input-novo-produto-nome').value.trim();
+      if (!nome) return;
+
       try {
-        showToast('Sincronizando catálogo e complementos (/v1/products)...', 'info');
-        const res = await fetch('/api/sync/catalogo', { method: 'POST' }).then(r => r.json());
-        if (res.error) throw new Error(res.error);
-        showToast(`✓ Catálogo sincronizado: ${res.produtos} produtos e ${res.complementos} complementos.`, 'success');
-        await carregarDados();
-      } catch (err) {
-        showToast('Falha na sincronização do catálogo: ' + err.message, 'error');
-        if (err.message.includes('401') || err.message.includes('invalid_client')) abrirModalChave();
+        await fetch('/api/contagem/adicionar-produto', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contagemId: state.contagem.id, nome })
+        });
+        fecharModalAddProduto();
+        await carregarContagem(state.contagem.data);
+        showToast(`Item "${nome.toUpperCase()}" adicionado!`, 'success');
+      } catch (e) {
+        showToast('Erro ao adicionar produto', 'error');
       }
     }
 
-    async function dispararSyncVendas() {
+    async function removerItem(itemId) {
+      if (!confirm('Deseja remover este item da folha de contagem?')) return;
       try {
-        showToast('Rastreando vendas e comandas abertas (/v1/table-sessions)...', 'info');
-        const res = await fetch('/api/sync/vendas', { method: 'POST' }).then(r => r.json());
-        if (res.error) throw new Error(res.error);
-        showToast(`✓ Vendas processadas: ${res.pedidosProcessados} novos pedidos baixados no estoque.`, 'success');
-        await carregarDados();
-      } catch (err) {
-        showToast('Falha ao processar vendas: ' + err.message, 'error');
-        if (err.message.includes('401') || err.message.includes('invalid_client')) abrirModalChave();
+        await fetch(`/api/contagem/item/${itemId}`, { method: 'DELETE' });
+        await carregarContagem(state.contagem.data);
+        showToast('Item removido da folha.', 'info');
+      } catch (e) {
+        showToast('Erro ao remover item', 'error');
       }
     }
 
-    async function sincronizarTudo() {
-      if (!state.takeatApiKeyConfigurada) {
-        abrirModalChave();
-        showToast('Por favor, informe sua chave de API Takeat para sincronizar.', 'error');
-        return;
-      }
-      showToast('Iniciando sincronização completa com Takeat...', 'info');
+    // -------------------------------------------------------------
+    // HISTÓRICO DE FOLHAS ANTERIORES
+    // -------------------------------------------------------------
+    async function abrirModalHistorico() {
+      document.getElementById('modal-historico').classList.remove('hidden');
+      const listaEl = document.getElementById('lista-historico');
+      listaEl.innerHTML = '<p class="text-slate-500 py-4 text-center">Buscando histórico...</p>';
+
       try {
-        await dispararSyncCatalogo();
-        await dispararSyncInsumos();
-        await dispararSyncVendas();
-      } catch (e) {}
+        const hist = await fetch('/api/contagem/historico').then(r => r.json());
+        if (!hist || hist.length === 0) {
+          listaEl.innerHTML = '<p class="text-slate-500 py-4 text-center">Nenhum fechamento anterior encontrado.</p>';
+          return;
+        }
+
+        listaEl.innerHTML = '';
+        hist.forEach(h => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'py-3 flex items-center justify-between hover:bg-slate-50 px-2 rounded-lg cursor-pointer transition';
+          itemDiv.onclick = () => {
+            document.getElementById('input-data-contagem').value = h.data;
+            fecharModalHistorico();
+            carregarContagem(h.data);
+          };
+
+          const statusColor = h.status === 'FINALIZADO' ? 'text-slate-600 bg-slate-100' : 'text-emerald-700 bg-emerald-100';
+
+          itemDiv.innerHTML = `
+            <div>
+              <p class="font-bold text-slate-800">${h.data} &bull; ${h.pizzaria}</p>
+              <p class="text-[11px] text-slate-500">Resp: ${h.responsavel || 'Não informado'} | ${h.total_itens || 0} itens contados</p>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor}">${h.status}</span>
+              <p class="text-[11px] font-semibold text-blue-700 mt-1">${h.total_vendas || 0} vendas</p>
+            </div>
+          `;
+          listaEl.appendChild(itemDiv);
+        });
+      } catch (e) {
+        listaEl.innerHTML = '<p class="text-red-500 py-4 text-center">Erro ao carregar histórico.</p>';
+      }
+    }
+
+    function fecharModalHistorico() {
+      document.getElementById('modal-historico').classList.add('hidden');
+    }
+
+    // -------------------------------------------------------------
+    // TOAST NOTIFICATIONS
+    // -------------------------------------------------------------
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      const bg = type === 'success' ? 'bg-emerald-900/95 border-emerald-500 text-emerald-100' :
+                 type === 'error' ? 'bg-red-900/95 border-red-500 text-red-100' :
+                 'bg-slate-900/95 border-blue-500 text-slate-100';
+      toast.className = `p-3 rounded-xl border shadow-2xl text-xs font-medium backdrop-blur-md transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto flex items-center justify-between gap-3 ${bg}`;
+      toast.innerHTML = `<span>${message}</span><button onclick="this.parentElement.remove()" class="text-xs opacity-60 hover:opacity-100 font-bold ml-2">&times;</button>`;
+      container.appendChild(toast);
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
     }
   </script>
 </body>
