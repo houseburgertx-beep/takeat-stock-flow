@@ -5,11 +5,10 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "start": "node --experimental-strip-types src/index.ts",
-    "dev": "node --watch --experimental-strip-types src/index.ts",
-    "cli": "node --experimental-strip-types src/cli.ts",
-    "test": "node --experimental-strip-types --test tests/**/*.test.ts",
-    "seed": "node --experimental-strip-types src/cli.ts seed-demo"
+    "start": "node --env-file-if-exists=.env --experimental-strip-types src/index.ts",
+    "dev": "node --watch --env-file-if-exists=.env --experimental-strip-types src/index.ts",
+    "cli": "node --env-file-if-exists=.env --experimental-strip-types src/cli.ts",
+    "test": "node --experimental-strip-types --test tests/**/*.test.ts"
   },
   "keywords": [
     "takeat",

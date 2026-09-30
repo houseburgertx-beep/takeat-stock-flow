@@ -16,16 +16,6 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
 
-  <!-- AVISO MODO GITHUB PAGES (APENAS QUANDO NÃO HÁ BACKEND ATIVO) -->
-  <div id="banner-gh-pages" class="bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700 text-white text-xs px-4 py-2 font-medium flex items-center justify-between shadow-md hidden">
-    <div class="flex items-center gap-2 max-w-5xl mx-auto w-full">
-      <i data-lucide="info" class="w-4 h-4 shrink-0"></i>
-      <span>
-        <strong>Modo Demonstração Web Ativo (GitHub Pages):</strong> Você está navegando na versão estática interativa. Todos os recursos (ajuste de estoque, fichas técnicas e histórico) funcionam em tempo real no seu navegador. Para conexão com a API oficial em produção, inicie o backend via <code class="bg-black/20 px-1 py-0.5 rounded font-mono">npm start</code>.
-      </span>
-    </div>
-  </div>
-
   <!-- TOPBAR -->
   <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700/60 sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -45,12 +35,12 @@
       <!-- STATUS TAKEA T & AÇÕES -->
       <div class="flex items-center space-x-4">
         <div id="status-badge" class="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-950 border border-slate-700 text-xs">
-          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-          <span class="text-slate-300" id="status-text">Sistema Pronto</span>
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span class="text-slate-300" id="status-text">Verificando Takeat...</span>
         </div>
-        <button onclick="carregarDadosDemo()" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-600 transition flex items-center gap-1.5 shadow-sm">
-          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i>
-          <span>Resetar / Demo</span>
+        <button onclick="sincronizarTudo()" class="text-xs bg-orange-500 hover:bg-orange-600 text-white px-3.5 py-1.5 rounded-lg font-semibold transition flex items-center gap-1.5 shadow-md shadow-orange-500/20">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+          <span>Sincronizar Takeat</span>
         </button>
       </div>
     </div>
@@ -75,7 +65,7 @@
         <i data-lucide="history" class="w-4 h-4"></i> Auditoria Ledger
       </button>
       <button onclick="switchTab('sync')" id="tab-btn-sync" class="tab-btn px-3.5 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 flex items-center gap-2 transition">
-        <i data-lucide="refresh-cw" class="w-4 h-4"></i> Conexão Takeat
+        <i data-lucide="key" class="w-4 h-4"></i> Conexão Takeat
       </button>
     </div>
   </nav>
@@ -138,6 +128,29 @@
         </div>
       </div>
 
+      <!-- CARD ONBOARDING: QUANDO NÃO HÁ DADOS SINCRONIZADOS -->
+      <div id="onboarding-card" class="bg-gradient-to-r from-slate-800 to-slate-850 border border-orange-500/30 rounded-2xl p-6 shadow-xl space-y-4">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-xl bg-orange-500/10 text-orange-400 flex items-center justify-center shrink-0 border border-orange-500/20">
+            <i data-lucide="cloud-lightning" class="w-6 h-6"></i>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-base font-bold text-white">Conecte sua conta da Takeat</h3>
+            <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+              Para importar seus insumos, catálogo de bebidas, produtos e acompanhar as vendas em tempo real, configure sua chave do <strong>AI Builders</strong> no arquivo local <code class="bg-slate-900 px-1.5 py-0.5 rounded text-orange-400 font-mono">.env</code>.
+            </p>
+            <div class="mt-4 flex flex-wrap gap-3">
+              <button onclick="switchTab('sync')" class="text-xs bg-orange-500 hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-md">
+                <i data-lucide="key" class="w-4 h-4"></i> Ver Instruções de Conexão
+              </button>
+              <button onclick="sincronizarTudo()" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold px-4 py-2 rounded-xl transition flex items-center gap-1.5">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i> Sincronizar Agora
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- SEÇÃO DE ALERTAS CRÍTICOS -->
       <div id="secao-alertas-criticos" class="bg-red-950/20 border border-red-800/40 rounded-2xl p-5 hidden">
         <div class="flex items-center justify-between mb-4">
@@ -151,7 +164,6 @@
 
       <!-- DUAS COLUNAS: ÚLTIMAS VENDAS E ÚLTIMAS MOVIMENTAÇÕES -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Vendas Recentes -->
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg flex flex-col">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-sm font-bold text-white flex items-center gap-2">
@@ -164,7 +176,6 @@
           </div>
         </div>
 
-        <!-- Movimentações Recentes -->
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg flex flex-col">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-sm font-bold text-white flex items-center gap-2">
@@ -188,13 +199,15 @@
             <p class="text-xs text-slate-400">Controle de saldos, estoques mínimos e entradas/saídas rápidas</p>
           </div>
           <div class="flex items-center gap-3">
+            <button onclick="dispararSyncInsumos()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold px-3 py-2.5 rounded-xl border border-slate-600 transition flex items-center gap-1.5">
+              <i data-lucide="cloud-download" class="w-4 h-4 text-orange-400"></i> Sincronizar Insumos Takeat
+            </button>
             <button onclick="abrirModalNovoInsumo()" class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-2">
               <i data-lucide="plus-circle" class="w-4 h-4"></i> Novo Item
             </button>
           </div>
         </div>
 
-        <!-- FILTROS -->
         <div class="flex flex-col sm:flex-row gap-3 mb-4">
           <div class="relative flex-1">
             <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-slate-400"></i>
@@ -216,7 +229,6 @@
           </div>
         </div>
 
-        <!-- TABELA DE INSUMOS -->
         <div class="overflow-x-auto border border-slate-700/60 rounded-xl">
           <table class="w-full text-left border-collapse text-sm">
             <thead class="bg-slate-900/60 text-slate-400 text-xs uppercase font-semibold">
@@ -244,15 +256,18 @@
             <h2 class="text-lg font-bold text-white">Mapeamento de Fichas Técnicas (Receituário)</h2>
             <p class="text-xs text-slate-400">Defina os insumos consumidos por cada Produto ou Complemento vendido no Takeat</p>
           </div>
-          <!-- SUB-ABAS PRODUTOS VS COMPLEMENTOS -->
-          <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-700">
-            <button onclick="switchFichaSubTab('produtos')" id="btn-sub-produtos" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-orange-500 text-white transition">Produtos</button>
-            <button onclick="switchFichaSubTab('complementos')" id="btn-sub-complementos" class="px-4 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition">Complementos (Adicionais)</button>
+          <div class="flex items-center gap-3">
+            <button onclick="dispararSyncCatalogo()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-600 transition flex items-center gap-1.5">
+              <i data-lucide="cloud-download" class="w-3.5 h-3.5 text-blue-400"></i> Sincronizar Catálogo Takeat
+            </button>
+            <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-700">
+              <button onclick="switchFichaSubTab('produtos')" id="btn-sub-produtos" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-orange-500 text-white transition">Produtos</button>
+              <button onclick="switchFichaSubTab('complementos')" id="btn-sub-complementos" class="px-4 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition">Complementos (Adicionais)</button>
+            </div>
           </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <!-- LISTA DE ITENS DO CATÁLOGO -->
           <div class="lg:col-span-5 bg-slate-900/60 border border-slate-700/60 rounded-xl p-4 flex flex-col h-[580px]">
             <div class="mb-3 relative">
               <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-slate-400"></i>
@@ -261,7 +276,6 @@
             <div id="lista-catalogo-container" class="overflow-y-auto flex-1 space-y-2 pr-1"></div>
           </div>
 
-          <!-- EDITOR DA FICHA TÉCNICA SELECIONADA -->
           <div class="lg:col-span-7 bg-slate-900/60 border border-slate-700/60 rounded-xl p-5 flex flex-col h-[580px]" id="editor-ficha-container">
             <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
               <div>
@@ -274,7 +288,6 @@
               </button>
             </div>
 
-            <!-- ITENS DA RECEITA -->
             <div class="flex-1 overflow-y-auto space-y-3 pr-1" id="editor-ingredientes-lista">
               <div class="h-full flex flex-col items-center justify-center text-slate-500 text-xs">
                 <i data-lucide="book-marked" class="w-10 h-10 mb-2 stroke-1"></i>
@@ -282,7 +295,6 @@
               </div>
             </div>
 
-            <!-- ADICIONAR INGREDIENTE -->
             <div id="form-add-ingrediente" class="border-t border-slate-800 pt-4 mt-4 hidden">
               <div class="grid grid-cols-12 gap-2 items-center">
                 <div class="col-span-6">
@@ -376,8 +388,8 @@
           <h3 class="text-base font-bold text-white flex items-center gap-2">
             <i data-lucide="key" class="w-5 h-5 text-orange-400"></i> Credenciais & OAuth Takeat
           </h3>
-          <p class="text-xs text-slate-400">
-            A integração utiliza o protocolo OAuth 2.0 com ciclo de vida automático de tokens (900 segundos com renovação atômica).
+          <p class="text-xs text-slate-400 leading-relaxed">
+            A integração utiliza o protocolo oficial OAuth 2.0 da Takeat com ciclo de vida automático de tokens (900 segundos com renovação atômica).
           </p>
 
           <div class="bg-slate-900/80 rounded-xl p-4 border border-slate-700/60 space-y-3 font-mono text-xs">
@@ -399,9 +411,14 @@
             </div>
           </div>
 
-          <div class="p-4 rounded-xl bg-blue-950/30 border border-blue-800/40 text-xs text-blue-300 space-y-1">
-            <p class="font-bold flex items-center gap-1.5"><i data-lucide="shield-check" class="w-4 h-4"></i> Segurança Ativa:</p>
-            <p>A chave nunca é exposta no navegador. Todas as chamadas de produção ocorrem exclusivamente no backend local.</p>
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-300 space-y-2">
+            <p class="font-bold text-orange-400 flex items-center gap-1.5"><i data-lucide="help-circle" class="w-4 h-4"></i> Como conectar sua API Key:</p>
+            <ol class="list-decimal list-inside space-y-1 text-slate-400">
+              <li>Acesse o portal <a href="https://ai-builders.takeat.app" target="_blank" class="text-orange-400 underline font-semibold">Takeat AI Builders</a>.</li>
+              <li>Gere uma nova chave com permissões de insumos, catálogo e comandas.</li>
+              <li>No terminal, abra o arquivo <code class="bg-slate-800 text-slate-200 px-1 py-0.5 rounded font-mono">.env</code> e insira sua chave na variável <code class="bg-slate-800 text-slate-200 px-1 py-0.5 rounded font-mono">TAKEAT_API_KEY</code>.</li>
+              <li>Inicie o sistema com <code class="bg-slate-800 text-slate-200 px-1 py-0.5 rounded font-mono">npm start</code>.</li>
+            </ol>
           </div>
         </div>
 
@@ -411,7 +428,7 @@
             <i data-lucide="cloud-sync" class="w-5 h-5 text-emerald-400"></i> Sincronização Sob Demanda
           </h3>
           <p class="text-xs text-slate-400">
-            Sincronize os dados da sua loja a qualquer momento com a Nova API V1.0 da Takeat:
+            Importe os dados reais da sua loja da Takeat a qualquer momento:
           </p>
 
           <div class="space-y-3">
@@ -419,7 +436,7 @@
               <div class="flex items-center gap-2.5">
                 <i data-lucide="package" class="w-4 h-4 text-orange-400"></i>
                 <div class="text-left">
-                  <p>Sincronizar Insumos Takeat</p>
+                  <p>1. Sincronizar Insumos Takeat</p>
                   <p class="text-[10px] text-slate-400 font-normal">GET /v1/inputs (paginação 100 por lote)</p>
                 </div>
               </div>
@@ -430,7 +447,7 @@
               <div class="flex items-center gap-2.5">
                 <i data-lucide="book" class="w-4 h-4 text-blue-400"></i>
                 <div class="text-left">
-                  <p>Sincronizar Catálogo & Adicionais</p>
+                  <p>2. Sincronizar Catálogo & Complementos</p>
                   <p class="text-[10px] text-slate-400 font-normal">GET /v1/products & /v1/complements</p>
                 </div>
               </div>
@@ -441,7 +458,7 @@
               <div class="flex items-center gap-2.5">
                 <i data-lucide="shopping-bag" class="w-4 h-4 text-emerald-400"></i>
                 <div class="text-left">
-                  <p>Processar Vendas & Baixar Estoque</p>
+                  <p>3. Processar Vendas & Baixar Estoque</p>
                   <p class="text-[10px] text-slate-400 font-normal">GET /v1/table-sessions (últimas 24h)</p>
                 </div>
               </div>
@@ -563,115 +580,20 @@
   </div>
 
   <footer class="bg-slate-900 border-t border-slate-800 py-4 text-center text-xs text-slate-500">
-    Takeat Stock Flow &copy; 2026 &bull; Integração com a Nova API V1.0 da Takeat
+    Takeat Stock Flow &copy; 2026 &bull; Conectado à Nova API V1.0 da Takeat
   </footer>
 
-  <!-- SCRIPT HÍBRIDO: SUPORTA BACKEND NODE.JS LOCAL E MODO CLIENT-SIDE GITHUB PAGES -->
   <script>
-    // DADOS INICIAIS DE DEMONSTRAÇÃO
-    const DEMO_STORE = {
-      insumos: [
-        { id: 1, codigo: 'BEB-HEIN-330', nome: 'Cerveja Heineken Long Neck 330ml', categoria: 'bebida', unidade: 'un', quantidade: 48, estoque_minimo: 24, preco_unitario: 5.80 },
-        { id: 2, codigo: 'BEB-COCA-350', nome: 'Coca-Cola Lata 350ml', categoria: 'bebida', unidade: 'un', quantidade: 60, estoque_minimo: 30, preco_unitario: 3.20 },
-        { id: 3, codigo: 'BEB-CACHACA-1L', nome: 'Cachaça Artesanal 1L', categoria: 'bebida', unidade: 'l', quantidade: 5.0, estoque_minimo: 2.0, preco_unitario: 28.00 },
-        { id: 4, codigo: 'BEB-VODKA-1L', nome: 'Vodka Smirnoff 1L', categoria: 'bebida', unidade: 'l', quantidade: 4.5, estoque_minimo: 2.0, preco_unitario: 42.00 },
-        { id: 5, codigo: 'BEB-GIN-750ML', nome: 'Gin Tanqueray 750ml', categoria: 'bebida', unidade: 'l', quantidade: 3.0, estoque_minimo: 1.5, preco_unitario: 95.00 },
-        { id: 6, codigo: 'ALI-LIMAO-UN', nome: 'Limão Taiti Fresco', categoria: 'alimento', unidade: 'un', quantidade: 80, estoque_minimo: 30, preco_unitario: 0.60 },
-        { id: 7, codigo: 'INS-ACUCAR-KG', nome: 'Açúcar Refinado', categoria: 'insumo', unidade: 'kg', quantidade: 15.0, estoque_minimo: 5.0, preco_unitario: 4.50 },
-        { id: 8, codigo: 'INS-PAO-BRIOCHE', nome: 'Pão de Hambúrguer Brioche', categoria: 'insumo', unidade: 'un', quantidade: 40, estoque_minimo: 20, preco_unitario: 2.10 },
-        { id: 9, codigo: 'ALI-BLEND-160G', nome: 'Hambúrguer Blend 160g', categoria: 'alimento', unidade: 'un', quantidade: 50, estoque_minimo: 25, preco_unitario: 7.50 },
-        { id: 10, codigo: 'ALI-BACON-KG', nome: 'Bacon Fatiado Defumado', categoria: 'alimento', unidade: 'kg', quantidade: 6.0, estoque_minimo: 3.0, preco_unitario: 38.00 },
-        { id: 11, codigo: 'ALI-CHEDDAR-KG', nome: 'Queijo Cheddar Fatiado', categoria: 'alimento', unidade: 'kg', quantidade: 8.0, estoque_minimo: 4.0, preco_unitario: 45.00 }
-      ],
-      produtos: [
-        { id: 101, nome: 'Caipirinha Tradicional', categoria_nome: 'Drinks', preco: 22.0, tem_ficha: true, qtd_insumos: 3 },
-        { id: 102, nome: 'Gin Tônica Clássica', categoria_nome: 'Drinks', preco: 28.0, tem_ficha: true, qtd_insumos: 2 },
-        { id: 103, nome: 'Heineken Long Neck', categoria_nome: 'Cervejas', preco: 14.0, tem_ficha: true, qtd_insumos: 1 },
-        { id: 104, nome: 'Coca-Cola Lata', categoria_nome: 'Refrigerantes', preco: 8.0, tem_ficha: true, qtd_insumos: 1 },
-        { id: 105, nome: 'Burguer Artesanal Duplo', categoria_nome: 'Hambúrgueres', preco: 38.0, tem_ficha: true, qtd_insumos: 3 }
-      ],
-      complementos: [
-        { id: 201, nome: 'Dose Extra de Vodka 50ml', categoria_nome: 'Doses Extras', preco: 10.0, tem_ficha: true, qtd_insumos: 1 },
-        { id: 202, nome: 'Bacon Fatiado Extra 50g', categoria_nome: 'Adicionais Burguer', preco: 6.0, tem_ficha: true, qtd_insumos: 1 },
-        { id: 203, nome: 'Queijo Cheddar Extra 30g', categoria_nome: 'Adicionais Burguer', preco: 5.0, tem_ficha: true, qtd_insumos: 1 }
-      ],
-      fichasProdutos: {
-        101: [
-          { insumo_id: 3, insumo_nome: 'Cachaça Artesanal 1L', insumo_unidade: 'l', insumo_estoque: 5.0, quantidade_consumida: 0.06, unidade_consumida: 'l' },
-          { insumo_id: 6, insumo_nome: 'Limão Taiti Fresco', insumo_unidade: 'un', insumo_estoque: 80, quantidade_consumida: 1, unidade_consumida: 'un' },
-          { insumo_id: 7, insumo_nome: 'Açúcar Refinado', insumo_unidade: 'kg', insumo_estoque: 15.0, quantidade_consumida: 0.025, unidade_consumida: 'kg' }
-        ],
-        102: [
-          { insumo_id: 5, insumo_nome: 'Gin Tanqueray 750ml', insumo_unidade: 'l', insumo_estoque: 3.0, quantidade_consumida: 0.06, unidade_consumida: 'l' },
-          { insumo_id: 6, insumo_nome: 'Limão Taiti Fresco', insumo_unidade: 'un', insumo_estoque: 80, quantidade_consumida: 0.5, unidade_consumida: 'un' }
-        ],
-        103: [
-          { insumo_id: 1, insumo_nome: 'Cerveja Heineken Long Neck 330ml', insumo_unidade: 'un', insumo_estoque: 48, quantidade_consumida: 1, unidade_consumida: 'un' }
-        ],
-        104: [
-          { insumo_id: 2, insumo_nome: 'Coca-Cola Lata 350ml', insumo_unidade: 'un', insumo_estoque: 60, quantidade_consumida: 1, unidade_consumida: 'un' }
-        ],
-        105: [
-          { insumo_id: 8, insumo_nome: 'Pão de Hambúrguer Brioche', insumo_unidade: 'un', insumo_estoque: 40, quantidade_consumida: 1, unidade_consumida: 'un' },
-          { insumo_id: 9, insumo_nome: 'Hambúrguer Blend 160g', insumo_unidade: 'un', insumo_estoque: 50, quantidade_consumida: 2, unidade_consumida: 'un' },
-          { insumo_id: 11, insumo_nome: 'Queijo Cheddar Fatiado', insumo_unidade: 'kg', insumo_estoque: 8.0, quantidade_consumida: 0.04, unidade_consumida: 'kg' }
-        ]
-      },
-      fichasComplementos: {
-        201: [{ insumo_id: 4, insumo_nome: 'Vodka Smirnoff 1L', insumo_unidade: 'l', insumo_estoque: 4.5, quantidade_consumida: 0.05, unidade_consumida: 'l' }],
-        202: [{ insumo_id: 10, insumo_nome: 'Bacon Fatiado Defumado', insumo_unidade: 'kg', insumo_estoque: 6.0, quantidade_consumida: 0.05, unidade_consumida: 'kg' }],
-        203: [{ insumo_id: 11, insumo_nome: 'Queijo Cheddar Fatiado', insumo_unidade: 'kg', insumo_estoque: 8.0, quantidade_consumida: 0.03, unidade_consumida: 'kg' }]
-      },
-      vendas: [
-        {
-          order_id: 5001, session_id: 9001, produto_nome: 'Caipirinha Tradicional', quantidade: 2, preco_total: 44.0, canal: 'salao', mesa_numero: '12', data_pedido: new Date().toISOString(),
-          complementos: [],
-          deducoes_estoque: [
-            { insumo_nome: 'Cachaça Artesanal 1L', quantidade: -0.12, insumo_unidade: 'l' },
-            { insumo_nome: 'Limão Taiti Fresco', quantidade: -2, insumo_unidade: 'un' },
-            { insumo_nome: 'Açúcar Refinado', quantidade: -0.05, insumo_unidade: 'kg' }
-          ]
-        },
-        {
-          order_id: 5002, session_id: 9001, produto_nome: 'Burguer Artesanal Duplo', quantidade: 1, preco_total: 49.0, canal: 'salao', mesa_numero: '12', data_pedido: new Date().toISOString(),
-          complementos: [
-            { complemento_nome: 'Bacon Fatiado Extra 50g', quantidade: 1 },
-            { complemento_nome: 'Queijo Cheddar Extra 30g', quantidade: 1 }
-          ],
-          deducoes_estoque: [
-            { insumo_nome: 'Pão de Hambúrguer Brioche', quantidade: -1, insumo_unidade: 'un' },
-            { insumo_nome: 'Hambúrguer Blend 160g', quantidade: -2, insumo_unidade: 'un' },
-            { insumo_nome: 'Queijo Cheddar Fatiado', quantidade: -0.07, insumo_unidade: 'kg' },
-            { insumo_nome: 'Bacon Fatiado Defumado', quantidade: -0.05, insumo_unidade: 'kg' }
-          ]
-        },
-        {
-          order_id: 5003, session_id: 9001, produto_nome: 'Heineken Long Neck', quantidade: 3, preco_total: 42.0, canal: 'salao', mesa_numero: '12', data_pedido: new Date().toISOString(),
-          complementos: [],
-          deducoes_estoque: [{ insumo_nome: 'Cerveja Heineken Long Neck 330ml', quantidade: -3, insumo_unidade: 'un' }]
-        },
-        {
-          order_id: 5004, session_id: 9002, produto_nome: 'Gin Tônica Clássica', quantidade: 2, preco_total: 66.0, canal: 'delivery', comanda_numero: 'DEL-44', data_pedido: new Date(Date.now() - 3600000).toISOString(),
-          complementos: [{ complemento_nome: 'Dose Extra de Vodka 50ml', quantidade: 1 }],
-          deducoes_estoque: [
-            { insumo_nome: 'Gin Tanqueray 750ml', quantidade: -0.12, insumo_unidade: 'l' },
-            { insumo_nome: 'Limão Taiti Fresco', quantidade: -1, insumo_unidade: 'un' },
-            { insumo_nome: 'Vodka Smirnoff 1L', quantidade: -0.05, insumo_unidade: 'l' }
-          ]
-        }
-      ],
-      movimentacoes: [
-        { id: 1, insumo_nome: 'Cachaça Artesanal 1L', tipo: 'SAIDA_VENDA', quantidade: -0.12, insumo_unidade: 'l', saldo_anterior: 5.12, saldo_posterior: 5.0, descricao: 'Venda: 2x Caipirinha Tradicional', data_hora: new Date().toISOString() },
-        { id: 2, insumo_nome: 'Limão Taiti Fresco', tipo: 'SAIDA_VENDA', quantidade: -2, insumo_unidade: 'un', saldo_anterior: 82, saldo_posterior: 80, descricao: 'Venda: 2x Caipirinha Tradicional', data_hora: new Date().toISOString() },
-        { id: 3, insumo_nome: 'Hambúrguer Blend 160g', tipo: 'SAIDA_VENDA', quantidade: -2, insumo_unidade: 'un', saldo_anterior: 52, saldo_posterior: 50, descricao: 'Venda: 1x Burguer Artesanal Duplo', data_hora: new Date().toISOString() },
-        { id: 4, insumo_nome: 'Cerveja Heineken Long Neck 330ml', tipo: 'SAIDA_VENDA', quantidade: -3, insumo_unidade: 'un', saldo_anterior: 51, saldo_posterior: 48, descricao: 'Venda: 3x Heineken Long Neck', data_hora: new Date().toISOString() },
-        { id: 5, insumo_nome: 'Bacon Fatiado Defumado', tipo: 'SAIDA_VENDA', quantidade: -0.05, insumo_unidade: 'kg', saldo_anterior: 6.05, saldo_posterior: 6.0, descricao: 'Adicional: 1x Bacon Fatiado Extra 50g', data_hora: new Date().toISOString() }
-      ]
-    };
+    // Limpa dados de demonstração antigos se existirem no navegador
+    try {
+      const existingInsumos = localStorage.getItem('takeat_insumos');
+      if (existingInsumos && existingInsumos.includes('BEB-HEIN-330')) {
+        localStorage.clear();
+      }
+    } catch(e) {}
 
-    // Estado da Aplicação
     const state = {
-      isStaticMode: false,
+      isBackend: false,
       insumos: [],
       produtos: [],
       complementos: [],
@@ -684,99 +606,18 @@
       insumoAjusteAlvo: null,
     };
 
-    // Inicialização Inteligente
     document.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
-
-      // Checa se está no GitHub Pages ou se a API local está acessível
-      const isGitHubPages = window.location.hostname.includes('github.io');
-      let apiWorks = false;
-
-      if (!isGitHubPages) {
-        try {
-          const res = await fetch('/api/status', { method: 'GET', signal: AbortSignal.timeout(1500) });
-          if (res.ok) apiWorks = true;
-        } catch (e) {
-          apiWorks = false;
-        }
-      }
-
-      if (!apiWorks || isGitHubPages) {
-        // Ativa modo local/GitHub Pages com persistência no LocalStorage
-        state.isStaticMode = true;
-        document.getElementById('banner-gh-pages').classList.remove('hidden');
-        document.getElementById('status-text').textContent = 'Modo Web (Demo)';
-        document.getElementById('sync-info-key').textContent = 'Modo Web (Demo)';
-        document.getElementById('sync-info-token').textContent = 'Simulado';
-        document.getElementById('sync-info-expira').textContent = 'Ativo (Local)';
-        initLocalStorage();
-        carregarDoLocalStorage();
-      } else {
-        await carregarStatusBackend();
-        await carregarTudoBackend();
-        setInterval(carregarStatusBackend, 30000);
-      }
-
-      lucide.createIcons();
+      await carregarDados();
+      setInterval(carregarStatus, 30000);
     });
 
-    // -------------------------------------------------------------
-    // GESTÃO CLIENT-SIDE (LOCALSTORAGE PARA GITHUB PAGES)
-    // -------------------------------------------------------------
-    function initLocalStorage() {
-      if (!localStorage.getItem('takeat_insumos')) {
-        localStorage.setItem('takeat_insumos', JSON.stringify(DEMO_STORE.insumos));
-        localStorage.setItem('takeat_produtos', JSON.stringify(DEMO_STORE.produtos));
-        localStorage.setItem('takeat_complementos', JSON.stringify(DEMO_STORE.complementos));
-        localStorage.setItem('takeat_fichas_prod', JSON.stringify(DEMO_STORE.fichasProdutos));
-        localStorage.setItem('takeat_fichas_comp', JSON.stringify(DEMO_STORE.fichasComplementos));
-        localStorage.setItem('takeat_vendas', JSON.stringify(DEMO_STORE.vendas));
-        localStorage.setItem('takeat_movs', JSON.stringify(DEMO_STORE.movimentacoes));
-      }
-    }
-
-    function carregarDoLocalStorage() {
-      state.insumos = JSON.parse(localStorage.getItem('takeat_insumos') || '[]');
-      state.produtos = JSON.parse(localStorage.getItem('takeat_produtos') || '[]');
-      state.complementos = JSON.parse(localStorage.getItem('takeat_complementos') || '[]');
-      state.vendas = JSON.parse(localStorage.getItem('takeat_vendas') || '[]');
-      state.movimentacoes = JSON.parse(localStorage.getItem('takeat_movs') || '[]');
-
-      // Alertas
-      state.alertas = state.insumos.filter(i => i.quantidade <= i.estoque_minimo && i.estoque_minimo > 0).map(i => ({
-        insumo_id: i.id,
-        insumo_nome: i.nome,
-        categoria: i.categoria,
-        unidade: i.unidade,
-        saldo_atual: i.quantidade,
-        estoque_minimo: i.estoque_minimo,
-        deficit: Number((i.estoque_minimo - i.quantidade).toFixed(2)),
-        nivel_alerta: i.quantidade <= 0 ? 'CRITICO' : 'ALERTA'
-      }));
-
-      const totalBebidas = state.insumos.filter(i => i.categoria === 'bebida').length;
-      const totalInsumos = state.insumos.filter(i => i.categoria === 'insumo').length;
-      const valorTotal = state.insumos.reduce((acc, i) => acc + (i.quantidade * (i.preco_unitario || 0)), 0);
-
-      renderDashboard({
-        total_itens: state.insumos.length,
-        total_bebidas: totalBebidas,
-        total_insumos: totalInsumos,
-        total_alertas: state.alertas.length,
-        valor_total_estoque: valorTotal,
-        alertas_criticos: state.alertas,
-        ultimos_pedidos: state.vendas.slice(0, 5),
-        ultimas_movimentacoes: state.movimentacoes.slice(0, 5)
-      });
-
-      popularSelectInsumos();
-    }
-
-    // -------------------------------------------------------------
-    // GESTÃO COM BACKEND NODE.JS ATIVO
-    // -------------------------------------------------------------
-    async function carregarTudoBackend() {
+    async function carregarDados() {
       try {
+        const statusRes = await fetch('/api/status').then(r => r.json());
+        state.isBackend = true;
+        atualizarStatusUI(statusRes);
+
         const [dashRes, insumosRes, prodRes, compRes, vendasRes, movRes] = await Promise.all([
           fetch('/api/dashboard').then(r => r.json()),
           fetch('/api/insumos').then(r => r.json()),
@@ -786,65 +627,78 @@
           fetch('/api/movimentacoes').then(r => r.json()),
         ]);
 
-        state.insumos = insumosRes;
-        state.produtos = prodRes;
-        state.complementos = compRes;
-        state.vendas = vendasRes;
-        state.movimentacoes = movRes;
+        state.insumos = insumosRes || [];
+        state.produtos = prodRes || [];
+        state.complementos = compRes || [];
+        state.vendas = vendasRes || [];
+        state.movimentacoes = movRes || [];
         state.alertas = dashRes.alertas_criticos || [];
 
         renderDashboard(dashRes);
         popularSelectInsumos();
       } catch (err) {
-        console.error('Erro ao carregar dados do backend:', err);
+        // Se a API não respondeu (ex: rodando estático no GitHub Pages)
+        state.isBackend = false;
+        document.getElementById('status-badge').innerHTML = `
+          <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+          <span class="text-amber-300 font-medium">Aguardando Backend Local</span>
+        `;
+        document.getElementById('sync-info-key').textContent = 'Inicie "npm start" no terminal';
+        document.getElementById('sync-info-token').textContent = 'Desconectado';
+        document.getElementById('sync-info-expira').textContent = '-';
+        document.getElementById('sync-info-escopos').textContent = 'inputs:read, products:read, table-sessions:read';
+
+        renderDashboard({
+          total_itens: 0,
+          total_bebidas: 0,
+          total_insumos: 0,
+          total_alertas: 0,
+          valor_total_estoque: 0,
+          alertas_criticos: [],
+          ultimos_pedidos: [],
+          ultimas_movimentacoes: []
+        });
       }
     }
 
-    async function carregarStatusBackend() {
+    async function carregarStatus() {
+      if (!state.isBackend) return;
       try {
         const res = await fetch('/api/status').then(r => r.json());
-        const badge = document.getElementById('status-badge');
-
-        const keyInfo = document.getElementById('sync-info-key');
-        const tokenInfo = document.getElementById('sync-info-token');
-        const expiraInfo = document.getElementById('sync-info-expira');
-        const escoposInfo = document.getElementById('sync-info-escopos');
-
-        if (res.takeat_api_key_configurada) {
-          badge.innerHTML = `
-            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span class="text-emerald-400 font-semibold">Takeat Conectada</span>
-          `;
-          keyInfo.textContent = 'Configurada no .env';
-          keyInfo.className = 'text-emerald-400 font-semibold';
-        } else {
-          badge.innerHTML = `
-            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-            <span class="text-amber-300 font-medium">Modo Local</span>
-          `;
-          keyInfo.textContent = 'Não configurada (Modo Local)';
-          keyInfo.className = 'text-amber-400';
-        }
-
-        if (res.token_valido) {
-          tokenInfo.textContent = 'Ativo (Bearer JWT)';
-          tokenInfo.className = 'text-emerald-400 font-semibold';
-          expiraInfo.textContent = `${res.token_expira_em_segundos}s restantes`;
-        } else {
-          tokenInfo.textContent = 'Aguardando primeira chamada';
-          tokenInfo.className = 'text-slate-400';
-          expiraInfo.textContent = '-';
-        }
-
-        escoposInfo.textContent = res.escopos_token || 'inputs:read, products:read, table-sessions:read';
-      } catch (err) {
-        console.error('Erro ao obter status:', err);
-      }
+        atualizarStatusUI(res);
+      } catch (e) {}
     }
 
-    // -------------------------------------------------------------
-    // CONTROLES DE INTERFACE
-    // -------------------------------------------------------------
+    function atualizarStatusUI(res) {
+      const badge = document.getElementById('status-badge');
+      const keyInfo = document.getElementById('sync-info-key');
+      const tokenInfo = document.getElementById('sync-info-token');
+      const expiraInfo = document.getElementById('sync-info-expira');
+      const escoposInfo = document.getElementById('sync-info-escopos');
+
+      if (res.takeat_api_key_configurada) {
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-emerald-400 font-semibold">Takeat Conectada</span>`;
+        keyInfo.textContent = 'Configurada no .env';
+        keyInfo.className = 'text-emerald-400 font-semibold';
+      } else {
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span><span class="text-amber-300 font-medium">Chave Não Configurada</span>`;
+        keyInfo.textContent = 'Defina TAKEAT_API_KEY no .env';
+        keyInfo.className = 'text-amber-400';
+      }
+
+      if (res.token_valido) {
+        tokenInfo.textContent = 'Ativo (Bearer OAuth)';
+        tokenInfo.className = 'text-emerald-400 font-semibold';
+        expiraInfo.textContent = `${res.token_expira_em_segundos}s restantes`;
+      } else {
+        tokenInfo.textContent = 'Pronto para emitir na 1ª chamada';
+        tokenInfo.className = 'text-slate-400';
+        expiraInfo.textContent = '-';
+      }
+
+      escoposInfo.textContent = res.escopos_token || 'inputs:read, products:read, table-sessions:read';
+    }
+
     function switchTab(tabId) {
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('bg-orange-500', 'text-white', 'shadow-md', 'shadow-orange-500/20');
@@ -871,14 +725,20 @@
     }
 
     function renderDashboard(data) {
-      document.getElementById('metric-total-itens').textContent = data.total_itens;
-      document.getElementById('metric-total-bebidas').textContent = data.total_bebidas;
-      document.getElementById('metric-total-insumos').textContent = data.total_insumos;
-      document.getElementById('metric-total-alertas').textContent = data.total_alertas;
+      document.getElementById('metric-total-itens').textContent = data.total_itens || 0;
+      document.getElementById('metric-total-bebidas').textContent = data.total_bebidas || 0;
+      document.getElementById('metric-total-insumos').textContent = data.total_insumos || 0;
+      document.getElementById('metric-total-alertas').textContent = data.total_alertas || 0;
       document.getElementById('metric-vendas-rastreadas').textContent = state.vendas.length;
       document.getElementById('metric-valor-estoque').textContent = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(data.valor_total_estoque || 0);
 
-      // Alertas Críticos
+      const onboarding = document.getElementById('onboarding-card');
+      if (data.total_itens === 0 && state.vendas.length === 0) {
+        onboarding.classList.remove('hidden');
+      } else {
+        onboarding.classList.add('hidden');
+      }
+
       const containerAlertas = document.getElementById('secao-alertas-criticos');
       const listaAlertas = document.getElementById('lista-alertas-criticos');
 
@@ -897,7 +757,6 @@
         containerAlertas.classList.add('hidden');
       }
 
-      // Vendas Recentes
       const vendasBox = document.getElementById('dashboard-ultimas-vendas');
       if (data.ultimos_pedidos && data.ultimos_pedidos.length > 0) {
         vendasBox.innerHTML = data.ultimos_pedidos.map(p => `
@@ -913,9 +772,10 @@
             </div>
           </div>
         `).join('');
+      } else {
+        vendasBox.innerHTML = `<p class="text-xs text-slate-500 py-6 text-center">Nenhuma venda registrada ainda.</p>`;
       }
 
-      // Movimentações Recentes
       const movBox = document.getElementById('dashboard-ultimas-movimentacoes');
       if (data.ultimas_movimentacoes && data.ultimas_movimentacoes.length > 0) {
         movBox.innerHTML = data.ultimas_movimentacoes.map(m => `
@@ -932,12 +792,13 @@
             </div>
           </div>
         `).join('');
+      } else {
+        movBox.innerHTML = `<p class="text-xs text-slate-500 py-6 text-center">Nenhuma movimentação registrada.</p>`;
       }
 
       lucide.createIcons();
     }
 
-    // Tabela de Insumos
     function renderTabelaInsumos() {
       const tbody = document.getElementById('tabela-insumos-body');
       const busca = (document.getElementById('filtro-busca-insumo')?.value || '').toLowerCase();
@@ -953,7 +814,16 @@
       });
 
       if (filtrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500 text-xs">Nenhum insumo encontrado.</td></tr>`;
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="p-8 text-center text-slate-400 text-xs space-y-2">
+              <i data-lucide="package-search" class="w-8 h-8 mx-auto text-slate-500"></i>
+              <p class="font-bold text-slate-300">Nenhum insumo ou bebida encontrado</p>
+              <p class="text-slate-500">Sincronize com a Takeat ou clique em "+ Novo Item" para cadastrar.</p>
+            </td>
+          </tr>
+        `;
+        lucide.createIcons();
         return;
       }
 
@@ -1001,7 +871,6 @@
       lucide.createIcons();
     }
 
-    // Fichas Técnicas
     function switchFichaSubTab(sub) {
       state.fichaSubTab = sub;
       document.getElementById('btn-sub-produtos').className = sub === 'produtos'
@@ -1025,7 +894,14 @@
       const filtrados = itens.filter(i => i.nome.toLowerCase().includes(busca) || (i.categoria_nome || '').toLowerCase().includes(busca));
 
       if (filtrados.length === 0) {
-        container.innerHTML = `<p class="text-xs text-slate-500 py-6 text-center">Nenhum item encontrado.</p>`;
+        container.innerHTML = `
+          <div class="h-full flex flex-col items-center justify-center text-slate-500 text-xs py-8 text-center p-4">
+            <i data-lucide="book" class="w-8 h-8 mb-2 text-slate-600"></i>
+            <p class="font-bold text-slate-400">Nenhum ${state.fichaSubTab === 'produtos' ? 'produto' : 'complemento'} carregado</p>
+            <p class="text-[11px] text-slate-500 mt-1">Sincronize o catálogo com a Takeat para visualizar seus itens reais.</p>
+          </div>
+        `;
+        lucide.createIcons();
         return;
       }
 
@@ -1060,16 +936,9 @@
       document.getElementById('btn-salvar-ficha').disabled = false;
       document.getElementById('form-add-ingrediente').classList.remove('hidden');
 
-      if (state.isStaticMode) {
-        const key = state.fichaSubTab === 'produtos' ? 'takeat_fichas_prod' : 'takeat_fichas_comp';
-        const fichasMap = JSON.parse(localStorage.getItem(key) || '{}');
-        state.selectedFichaItens = fichasMap[id] || [];
-      } else {
-        const url = state.fichaSubTab === 'produtos' ? `/api/fichas/produto/${id}` : `/api/fichas/complemento/${id}`;
-        const res = await fetch(url).then(r => r.json());
-        state.selectedFichaItens = res || [];
-      }
-
+      const url = state.fichaSubTab === 'produtos' ? `/api/fichas/produto/${id}` : `/api/fichas/complemento/${id}`;
+      const res = await fetch(url).then(r => r.json()).catch(() => []);
+      state.selectedFichaItens = res || [];
       renderEditorIngredientes();
     }
 
@@ -1078,7 +947,7 @@
 
       if (!state.selectedFichaItens || state.selectedFichaItens.length === 0) {
         lista.innerHTML = `
-          <div class="h-full flex flex-col items-center justify-center text-slate-500 text-xs py-8">
+          <div class="h-full flex flex-col items-center justify-center text-slate-500 text-xs py-8 text-center p-4">
             <i data-lucide="utensils" class="w-8 h-8 mb-2 stroke-1"></i>
             Nenhum insumo configurado na receita deste item ainda.
             <span class="text-[11px] text-orange-400 mt-1">Adicione insumos no formulário abaixo!</span>
@@ -1155,25 +1024,11 @@
     async function salvarFichaAtual() {
       if (!state.selectedItem) return;
 
-      if (state.isStaticMode) {
-        const key = state.fichaSubTab === 'produtos' ? 'takeat_fichas_prod' : 'takeat_fichas_comp';
-        const fichasMap = JSON.parse(localStorage.getItem(key) || '{}');
-        fichasMap[state.selectedItem.id] = state.selectedFichaItens;
-        localStorage.setItem(key, JSON.stringify(fichasMap));
+      const url = state.fichaSubTab === 'produtos'
+        ? `/api/fichas/produto/${state.selectedItem.id}`
+        : `/api/fichas/complemento/${state.selectedItem.id}`;
 
-        // Atualiza contadores
-        state.selectedItem.tem_ficha = state.selectedFichaItens.length > 0;
-        state.selectedItem.qtd_insumos = state.selectedFichaItens.length;
-        const itensKey = state.fichaSubTab === 'produtos' ? 'takeat_produtos' : 'takeat_complementos';
-        localStorage.setItem(itensKey, JSON.stringify(state.fichaSubTab === 'produtos' ? state.produtos : state.complementos));
-
-        alert('Ficha Técnica salva com sucesso!');
-        renderListaCatalogo();
-      } else {
-        const url = state.fichaSubTab === 'produtos'
-          ? `/api/fichas/produto/${state.selectedItem.id}`
-          : `/api/fichas/complemento/${state.selectedItem.id}`;
-
+      try {
         await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1186,8 +1041,10 @@
           })
         });
         alert('Ficha Técnica salva com sucesso!');
-        await carregarTudoBackend();
+        await carregarDados();
         renderListaCatalogo();
+      } catch (err) {
+        alert('Erro ao salvar ficha: ' + err.message);
       }
     }
 
@@ -1214,12 +1071,19 @@
       `).join('');
     }
 
-    // Tabela de Vendas
     function renderTabelaVendas() {
       const tbody = document.getElementById('tabela-vendas-body');
 
       if (state.vendas.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500 text-xs">Nenhuma venda rastreada ainda.</td></tr>`;
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="p-8 text-center text-slate-500 text-xs">
+              <i data-lucide="shopping-cart" class="w-8 h-8 mx-auto text-slate-600 mb-2"></i>
+              Nenhuma venda rastreada ainda. Clique em "Rastrear Vendas Takeat Agora" para puxar as comandas finalizadas.
+            </td>
+          </tr>
+        `;
+        lucide.createIcons();
         return;
       }
 
@@ -1257,12 +1121,11 @@
       `).join('');
     }
 
-    // Tabela Ledger
     function renderTabelaLedger() {
       const tbody = document.getElementById('tabela-ledger-body');
 
       if (state.movimentacoes.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500 text-xs">Nenhuma movimentação registrada no Ledger.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-500 text-xs">Nenhuma movimentação registrada no Ledger ainda.</td></tr>`;
         return;
       }
 
@@ -1292,7 +1155,6 @@
       }).join('');
     }
 
-    // Modal Ajuste de Estoque
     function abrirModalAjuste(insumoId) {
       const insumo = state.insumos.find(i => i.id === insumoId);
       if (!insumo) return;
@@ -1323,42 +1185,20 @@
 
       if (tipo === 'PERDA' && qtd > 0) qtd = -qtd;
 
-      if (state.isStaticMode) {
-        const saldoAnt = state.insumoAjusteAlvo.quantidade;
-        const saldoPost = Number((saldoAnt + qtd).toFixed(2));
-        state.insumoAjusteAlvo.quantidade = saldoPost;
-
-        state.movimentacoes.unshift({
-          id: Date.now(),
-          insumo_nome: state.insumoAjusteAlvo.nome,
-          tipo,
-          quantidade: qtd,
-          insumo_unidade: state.insumoAjusteAlvo.unidade,
-          saldo_anterior: saldoAnt,
-          saldo_posterior: saldoPost,
-          descricao: desc,
-          data_hora: new Date().toISOString()
-        });
-
-        localStorage.setItem('takeat_insumos', JSON.stringify(state.insumos));
-        localStorage.setItem('takeat_movs', JSON.stringify(state.movimentacoes));
-
-        fecharModalAjuste();
-        carregarDoLocalStorage();
-        renderTabelaInsumos();
-      } else {
+      try {
         await fetch(`/api/insumos/${state.insumoAjusteAlvo.id}/ajuste`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ quantidade: qtd, tipo, descricao: desc })
         });
         fecharModalAjuste();
-        await carregarTudoBackend();
+        await carregarDados();
         renderTabelaInsumos();
+      } catch (err) {
+        alert('Erro ao salvar ajuste: ' + err.message);
       }
     }
 
-    // Modal Novo Insumo
     function abrirModalNovoInsumo() {
       document.getElementById('novo-nome').value = '';
       document.getElementById('novo-quantidade').value = '0';
@@ -1379,91 +1219,66 @@
       const quantidade = parseFloat(document.getElementById('novo-quantidade').value) || 0;
       const estoque_minimo = parseFloat(document.getElementById('novo-minimo').value) || 0;
       const preco_unitario = parseFloat(document.getElementById('novo-preco').value) || 0;
-      const codigo = document.getElementById('novo-codigo').value.trim() || `INS-${Date.now().toString(36).toUpperCase()}`;
+      const codigo = document.getElementById('novo-codigo').value.trim() || undefined;
 
       if (!nome) {
         alert('O nome do item é obrigatório.');
         return;
       }
 
-      if (state.isStaticMode) {
-        const novoItem = {
-          id: Date.now(),
-          codigo,
-          nome,
-          categoria,
-          unidade,
-          quantidade,
-          estoque_minimo,
-          preco_unitario
-        };
-        state.insumos.push(novoItem);
-        localStorage.setItem('takeat_insumos', JSON.stringify(state.insumos));
-        fecharModalNovoInsumo();
-        carregarDoLocalStorage();
-        renderTabelaInsumos();
-      } else {
+      try {
         await fetch('/api/insumos', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ nome, categoria, unidade, quantidade, estoque_minimo, preco_unitario, codigo })
         });
         fecharModalNovoInsumo();
-        await carregarTudoBackend();
+        await carregarDados();
         renderTabelaInsumos();
+      } catch (err) {
+        alert('Erro ao cadastrar insumo: ' + err.message);
       }
     }
 
-    // Sincronização
     async function dispararSyncInsumos() {
-      if (state.isStaticMode) {
-        alert('No GitHub Pages os insumos de demonstração já estão carregados localmente! Para sincronizar em tempo real com sua loja da Takeat, execute o backend local via npm start.');
-        return;
-      }
       try {
         const res = await fetch('/api/sync/insumos', { method: 'POST' }).then(r => r.json());
+        if (res.error) throw new Error(res.error);
         alert(`Sincronização concluída! ${res.criados} criados, ${res.atualizados} atualizados.`);
-        await carregarTudoBackend();
+        await carregarDados();
       } catch (err) {
-        alert('Falha: ' + err.message);
+        alert('Falha na sincronização com Takeat: ' + err.message);
       }
     }
 
     async function dispararSyncCatalogo() {
-      if (state.isStaticMode) {
-        alert('No GitHub Pages o catálogo de demonstração já está carregado localmente!');
-        return;
-      }
       try {
         const res = await fetch('/api/sync/catalogo', { method: 'POST' }).then(r => r.json());
+        if (res.error) throw new Error(res.error);
         alert(`Catálogo sincronizado! ${res.produtos} produtos e ${res.complementos} complementos.`);
-        await carregarTudoBackend();
+        await carregarDados();
       } catch (err) {
-        alert('Falha: ' + err.message);
+        alert('Falha na sincronização com Takeat: ' + err.message);
       }
     }
 
     async function dispararSyncVendas() {
-      if (state.isStaticMode) {
-        alert('No GitHub Pages as vendas e deduções já estão simuladas! Para puxar novas vendas em tempo real, inicie o backend local.');
-        return;
-      }
       try {
         const res = await fetch('/api/sync/vendas', { method: 'POST' }).then(r => r.json());
+        if (res.error) throw new Error(res.error);
         alert(`Vendas processadas! ${res.pedidosProcessados} novos pedidos baixados.`);
-        await carregarTudoBackend();
+        await carregarDados();
       } catch (err) {
-        alert('Falha: ' + err.message);
+        alert('Falha na sincronização com Takeat: ' + err.message);
       }
     }
 
-    function carregarDadosDemo() {
-      if (!confirm('Deseja recarregar todos os dados de demonstração (bebidas, insumos, receitas e comandas)?')) return;
-      localStorage.clear();
-      initLocalStorage();
-      carregarDoLocalStorage();
-      alert('Dados de demonstração restaurados com sucesso!');
-      switchTab('dashboard');
+    async function sincronizarTudo() {
+      try {
+        await dispararSyncCatalogo();
+        await dispararSyncInsumos();
+        await dispararSyncVendas();
+      } catch (e) {}
     }
   </script>
 </body>
