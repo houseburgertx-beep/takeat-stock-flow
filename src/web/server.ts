@@ -290,6 +290,14 @@ export function createWebServer(db: DatabaseSync, client: TakeatClient) {
         return sendJson(201, item);
       }
 
+      if (pathname === '/api/contagem/editar-produto' && req.method === 'POST') {
+        const body = await getBody();
+        const item = atualizarItemContagem(db, Number(body.id), {
+          nome_produto: body.nome_produto
+        });
+        return sendJson(200, item);
+      }
+
       const matchDelContagemItem = pathname.match(/^\/api\/contagem\/item\/(\d+)$/);
       if (matchDelContagemItem && req.method === 'DELETE') {
         removerProdutoContagem(db, Number(matchDelContagemItem[1]));

@@ -614,16 +614,21 @@ export function atualizarItemContagem(
   db: DatabaseSync,
   itemId: number,
   fields: {
+    nome_produto?: string;
     pre_venda?: number;
     entrada_estoque?: number;
     venda?: number;
     pos_venda?: number;
     verificado?: boolean | number;
+    vinculos_takeat?: string | string[];
   }
 ): any {
   const item = db.prepare('SELECT * FROM contagem_itens WHERE id = ?').get(itemId) as any;
   if (!item) throw new Error('Item de contagem não encontrado');
 
+  const nome = fields.nome_produto !== undefined && fields.nome_produto.trim()
+    ? fields.nome_produto.trim().toUpperCase()
+    : item.nome_produto;
   const pre = fields.pre_venda !== undefined ? Number(fields.pre_venda) : item.pre_venda;
   const entrada = fields.entrada_estoque !== undefined ? Number(fields.entrada_estoque) : item.entrada_estoque;
   const venda = fields.venda !== undefined ? Number(fields.venda) : item.venda;
@@ -637,9 +642,9 @@ export function atualizarItemContagem(
 
   db.prepare(`
     UPDATE contagem_itens
-    SET pre_venda = ?, entrada_estoque = ?, venda = ?, pos_venda = ?, divergencia = ?, verificado = ?, vinculos_takeat = ?
+    SET nome_produto = ?, pre_venda = ?, entrada_estoque = ?, venda = ?, pos_venda = ?, divergencia = ?, verificado = ?, vinculos_takeat = ?
     WHERE id = ?
-  `).run(pre, entrada, venda, pos, divergencia, verificado, vinculos, itemId);
+  `).run(nome, pre, entrada, venda, pos, divergencia, verificado, vinculos, itemId);
 
   return db.prepare('SELECT * FROM contagem_itens WHERE id = ?').get(itemId);
 }
