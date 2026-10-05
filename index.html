@@ -37,6 +37,17 @@
         <span class="text-[11px] text-slate-400 border-l border-slate-700 pl-2">Folha de Fechamento Diário</span>
       </div>
 
+      <!-- BARRA DE BUSCA GLOBAL NO HEADER -->
+      <div class="flex-1 max-w-sm mx-2">
+        <button onclick="abrirModalBuscaGlobal()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 hover:border-slate-600 rounded-lg px-3 py-1.5 flex items-center justify-between text-xs transition shadow-inner group">
+          <div class="flex items-center gap-2 truncate">
+            <i data-lucide="search" class="w-3.5 h-3.5 text-amber-400 shrink-0"></i>
+            <span class="font-medium text-slate-300 truncate">Buscar bebidas em produtos & complementos...</span>
+          </div>
+          <kbd class="hidden sm:inline-block bg-slate-900 border border-slate-700 text-slate-400 text-[10px] px-1.5 py-0.5 rounded font-mono font-bold shrink-0 ml-1">Ctrl K</kbd>
+        </button>
+      </div>
+
       <div class="flex items-center space-x-2 text-xs">
         <!-- Badge da Conexão Takeat -->
         <button id="btn-status-takeat" onclick="abrirModalChave()" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">
@@ -75,9 +86,9 @@
 
         <div class="flex items-center gap-2">
           <!-- Localizar Bebidas e Complementos Takeat -->
-          <button onclick="abrirModalLocalizarBebidas()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1.5" title="Localizar e importar produtos e complementos do cardápio Takeat">
+          <button onclick="abrirModalBuscaGlobal()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1.5" title="Busca global e detector de bebidas nos produtos e complementos">
             <i data-lucide="search" class="w-3.5 h-3.5"></i>
-            <span>Localizar Bebidas (Takeat)</span>
+            <span>Busca Global de Bebidas</span>
           </button>
 
           <!-- Sincronizar Vendas Takeat -->
@@ -122,6 +133,18 @@
         <div class="p-2 flex flex-col justify-center bg-white">
           <span class="text-[10px] font-bold text-slate-500 uppercase tracking-tight">HORA FINAL:</span>
           <input type="time" id="cabecalho-hora-final" onchange="salvarCabecalho()" class="font-semibold text-slate-800 w-full focus:outline-none focus:border-b-2 focus:border-blue-700 text-xs">
+        </div>
+      </div>
+
+      <!-- BARRA DE PESQUISA RÁPIDA NA FOLHA -->
+      <div class="no-print bg-slate-50 border-b border-slate-200 px-4 py-2 flex items-center justify-between text-xs gap-2">
+        <div class="relative flex-1 max-w-xs">
+          <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2"></i>
+          <input type="text" id="filtro-tabela-folha" oninput="filtrarTabelaFolha(this.value)" placeholder="Filtrar bebidas nesta folha..." class="w-full pl-8 pr-2 py-1 bg-white border border-slate-300 rounded text-xs focus:outline-none focus:border-blue-600 font-medium">
+        </div>
+        <div class="text-slate-500 text-[11px] flex items-center gap-2">
+          <span id="contador-linhas-visiveis"></span>
+          <button onclick="limparFiltroTabela()" id="btn-limpar-filtro" class="text-blue-700 hover:underline hidden font-medium">Limpar</button>
         </div>
       </div>
 
@@ -273,38 +296,75 @@
     </div>
   </div>
 
-  <!-- MODAL: LOCALIZAR BEBIDAS E COMPLEMENTOS TAKEAT -->
-  <div id="modal-localizar-bebidas" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white text-slate-900 border border-slate-300 rounded-2xl max-w-xl w-full p-5 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between border-b border-slate-200 pb-2">
-        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-          <i data-lucide="search" class="w-4 h-4 text-amber-600"></i> Localizar Bebidas & Complementos na Takeat
-        </h3>
-        <button onclick="fecharModalLocalizarBebidas()" class="text-slate-400 hover:text-slate-700"><i data-lucide="x" class="w-4 h-4"></i></button>
+  <!-- MODAL: BUSCA GLOBAL & DETECTOR DE BEBIDAS (TAKEAT) -->
+  <div id="modal-busca-global" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-white text-slate-900 border border-slate-300 rounded-2xl max-w-2xl w-full p-5 space-y-4 shadow-2xl flex flex-col max-h-[92vh]">
+      
+      <!-- Cabeçalho do Modal -->
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-600">
+            <i data-lucide="search" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+              Busca Global & Detector de Bebidas
+            </h3>
+            <p class="text-[11px] text-slate-500">
+              Localize refrigerantes, cervejas, águas e opções de combos cadastrados na Takeat
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="atualizarCatalogoTakeat()" id="btn-sync-catalogo-modal" class="text-xs font-semibold text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition" title="Sincronizar dados frescos do catálogo Takeat agora">
+            <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+            <span>Atualizar Catálogo</span>
+          </button>
+          <button onclick="fecharModalBuscaGlobal()" class="text-slate-400 hover:text-slate-700 p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
       </div>
 
-      <p class="text-xs text-slate-600">
-        O sistema identifica automaticamente todos os <strong>Produtos</strong> e <strong>Complementos (Opções de Combos/Pizzas)</strong> da sua loja Takeat que são bebidas.
-      </p>
-
-      <!-- Barra de Filtros e Busca -->
-      <div class="flex items-center gap-2 text-xs">
-        <input type="text" id="filtro-busca-bebidas" oninput="filtrarListaBebidasTakeat(this.value)" placeholder="Buscar por nome (ex: Coca, Kuat, Heineken)..." class="flex-1 bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-semibold focus:border-blue-700 focus:outline-none">
-        <select id="filtro-tipo-bebidas" onchange="filtrarListaBebidasTakeat(document.getElementById('filtro-busca-bebidas').value)" class="bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-semibold focus:outline-none">
-          <option value="TODOS">Todos os Tipos</option>
-          <option value="PRODUTO">Apenas Produtos</option>
-          <option value="COMPLEMENTO">Apenas Complementos</option>
-        </select>
+      <!-- Barra de Pesquisa Principal -->
+      <div class="relative">
+        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+        <input type="text" id="filtro-busca-global-termo" oninput="aoDigitarBuscaGlobal(this.value)" placeholder="Digite o nome, marca ou categoria (ex: coca, heineken, pepsi 350ml, lata)..." class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700">
+        <button onclick="limparInputBuscaGlobal()" id="btn-limpar-busca-global" class="hidden absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-700 text-xs font-bold">&times;</button>
       </div>
 
-      <!-- Lista de Itens Detectados -->
-      <div class="max-h-72 overflow-y-auto divide-y divide-slate-200 text-xs border border-slate-200 rounded-lg p-1" id="lista-bebidas-takeat">
-        <p class="text-slate-500 py-4 text-center">Buscando bebidas no catálogo...</p>
+      <!-- Abas de Filtros Rápidos -->
+      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs border-b border-slate-200" id="abas-busca-global">
+        <button onclick="selecionarAbaBuscaGlobal('TODAS')" id="aba-todas" class="px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 bg-blue-900 text-white shadow-sm shrink-0">
+          <span>🍹 Todas as Bebidas</span>
+          <span class="bg-blue-800 text-[10px] px-1.5 py-0.2 rounded-full font-mono" id="contador-todas-bebidas">0</span>
+        </button>
+        <button onclick="selecionarAbaBuscaGlobal('REFRIGERANTE')" id="aba-refri" class="px-3 py-1.5 rounded-lg font-semibold text-slate-600 hover:bg-slate-100 transition shrink-0">
+          🥤 Refrigerantes & Águas
+        </button>
+        <button onclick="selecionarAbaBuscaGlobal('CERVEJA')" id="aba-cerveja" class="px-3 py-1.5 rounded-lg font-semibold text-slate-600 hover:bg-slate-100 transition shrink-0">
+          🍺 Cervejas & Chopp
+        </button>
+        <button onclick="selecionarAbaBuscaGlobal('COMPLEMENTO')" id="aba-complemento" class="px-3 py-1.5 rounded-lg font-semibold text-slate-600 hover:bg-slate-100 transition shrink-0">
+          ➕ Opções em Combos
+        </button>
+        <button onclick="selecionarAbaBuscaGlobal('COMBO')" id="aba-combo" class="px-3 py-1.5 rounded-lg font-semibold text-slate-600 hover:bg-slate-100 transition shrink-0">
+          🍔 Combos c/ Bebida
+        </button>
+        <button onclick="selecionarAbaBuscaGlobal('TUDO')" id="aba-tudo" class="px-3 py-1.5 rounded-lg font-semibold text-slate-600 hover:bg-slate-100 transition shrink-0">
+          🌐 Todo o Catálogo
+        </button>
       </div>
 
+      <!-- Lista de Itens Encontrados -->
+      <div class="flex-1 overflow-y-auto divide-y divide-slate-100 text-xs border border-slate-200 rounded-xl p-1 bg-slate-50/50 min-h-[240px]" id="lista-resultados-busca-global">
+        <p class="text-slate-400 py-8 text-center">Buscando itens no catálogo...</p>
+      </div>
+
+      <!-- Rodapé do Modal -->
       <div class="flex justify-between items-center pt-2 border-t border-slate-200 text-xs">
-        <span class="text-slate-500 text-[11px]" id="total-bebidas-encontradas">0 itens encontrados</span>
-        <button onclick="fecharModalLocalizarBebidas()" class="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100">Fechar</button>
+        <span class="text-slate-500 text-[11px]" id="total-itens-encontrados">0 itens encontrados</span>
+        <div class="flex items-center gap-2">
+          <button onclick="fecharModalBuscaGlobal()" class="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100">Fechar</button>
+        </div>
       </div>
     </div>
   </div>
@@ -368,7 +428,15 @@
       debounceTimers: {},
       isTakeatConfigured: false,
       catalogoBebidas: [],
-      vincularItemId: null
+      vincularItemId: null,
+      filtroTabela: '',
+      buscaGlobal: {
+        termo: '',
+        aba: 'TODAS',
+        itens: [],
+        resumo: null,
+        debounceTimer: null
+      }
     };
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -377,6 +445,22 @@
       document.getElementById('input-data-contagem').value = hoje;
       await verificarStatusTakeat();
       await carregarContagem(hoje);
+    });
+
+    // Atalhos globais de teclado (Ctrl+K para busca global, Esc para fechar modais)
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        abrirModalBuscaGlobal();
+      }
+      if (e.key === 'Escape') {
+        fecharModalBuscaGlobal();
+        fecharModalVincularItem();
+        fecharModalAddProduto();
+        fecharModalEditarProduto();
+        fecharModalHistorico();
+        fecharModalChave();
+      }
     });
 
     // -------------------------------------------------------------
@@ -513,10 +597,42 @@
       let totalVendas = 0;
       let totalDivergencias = 0;
 
-      itens.forEach((item, index) => {
+      itens.forEach(item => {
         totalVendas += Number(item.venda || 0);
         if (item.divergencia !== 0) totalDivergencias++;
+      });
 
+      const termoFiltro = (state.filtroTabela || '').toLowerCase().trim();
+      const itensFiltrados = termoFiltro
+        ? itens.filter(i => (i.nome_produto || '').toLowerCase().includes(termoFiltro))
+        : itens;
+
+      const contadorEl = document.getElementById('contador-linhas-visiveis');
+      const btnLimparEl = document.getElementById('btn-limpar-filtro');
+      if (contadorEl) {
+        if (termoFiltro) {
+          contadorEl.textContent = `${itensFiltrados.length} de ${itens.length} itens`;
+          if (btnLimparEl) btnLimparEl.classList.remove('hidden');
+        } else {
+          contadorEl.textContent = `${itens.length} bebidas cadastradas`;
+          if (btnLimparEl) btnLimparEl.classList.add('hidden');
+        }
+      }
+
+      if (itensFiltrados.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="p-8 text-center text-slate-500 font-sans">
+              <i data-lucide="search-x" class="w-6 h-6 mx-auto mb-1 text-slate-400"></i>
+              Nenhum produto encontrado com o filtro "<strong>${termoFiltro}</strong>".
+              <button onclick="limparFiltroTabela()" class="block mx-auto text-blue-700 font-bold mt-2 text-xs hover:underline">Limpar Filtro</button>
+            </td>
+          </tr>
+        `;
+        lucide.createIcons();
+      }
+
+      itensFiltrados.forEach((item, index) => {
         let vinculos = [];
         try {
           vinculos = JSON.parse(item.vinculos_takeat || '[]');
@@ -895,88 +1011,225 @@
     }
 
     // -------------------------------------------------------------
-    // LOCALIZAR E VINCULAR BEBIDAS E COMPLEMENTOS TAKEA T
+    // FILTRO RÁPIDO NA FOLHA DE CONTAGEM
     // -------------------------------------------------------------
-    async function abrirModalLocalizarBebidas() {
-      document.getElementById('modal-localizar-bebidas').classList.remove('hidden');
-      const listaEl = document.getElementById('lista-bebidas-takeat');
-      listaEl.innerHTML = '<p class="text-slate-500 py-4 text-center">Buscando bebidas no catálogo Takeat...</p>';
-      lucide.createIcons();
-
-      try {
-        const bebidas = await fetch('/api/takeat/bebidas').then(r => r.json());
-        state.catalogoBebidas = bebidas || [];
-        renderListaBebidasTakeat(state.catalogoBebidas);
-      } catch (err) {
-        listaEl.innerHTML = '<p class="text-red-500 py-4 text-center">Erro ao buscar bebidas da Takeat.</p>';
+    function filtrarTabelaFolha(termo) {
+      state.filtroTabela = termo || '';
+      if (state.contagem && state.contagem.itens) {
+        renderTabela(state.contagem.itens);
       }
     }
 
-    function fecharModalLocalizarBebidas() {
-      document.getElementById('modal-localizar-bebidas').classList.add('hidden');
+    function limparFiltroTabela() {
+      const input = document.getElementById('filtro-tabela-folha');
+      if (input) input.value = '';
+      state.filtroTabela = '';
+      if (state.contagem && state.contagem.itens) {
+        renderTabela(state.contagem.itens);
+      }
     }
 
-    function filtrarListaBebidasTakeat(termo) {
-      const tipo = document.getElementById('filtro-tipo-bebidas').value;
-      const lower = (termo || '').toLowerCase().trim();
+    // -------------------------------------------------------------
+    // BUSCA GLOBAL DE BEBIDAS E CATÁLOGO TAKEA T
+    // -------------------------------------------------------------
+    async function abrirModalBuscaGlobal() {
+      document.getElementById('modal-busca-global').classList.remove('hidden');
+      const input = document.getElementById('filtro-busca-global-termo');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+      lucide.createIcons();
 
-      const filtrados = (state.catalogoBebidas || []).filter(b => {
-        const bateNome = !lower || b.nome.toLowerCase().includes(lower) || (b.categoria && b.categoria.toLowerCase().includes(lower));
-        const bateTipo = tipo === 'TODOS' || b.tipo === tipo;
-        return bateNome && bateTipo;
-      });
-
-      renderListaBebidasTakeat(filtrados);
+      if (!state.buscaGlobal.itens || state.buscaGlobal.itens.length === 0) {
+        await carregarBuscaGlobal();
+      } else {
+        renderResultadosBuscaGlobal();
+      }
     }
 
-    function renderListaBebidasTakeat(lista) {
-      const listaEl = document.getElementById('lista-bebidas-takeat');
-      const totalEl = document.getElementById('total-bebidas-encontradas');
-      totalEl.textContent = `${lista.length} bebida(s) encontrada(s)`;
+    function fecharModalBuscaGlobal() {
+      const modal = document.getElementById('modal-busca-global');
+      if (modal) modal.classList.add('hidden');
+    }
 
-      if (lista.length === 0) {
-        listaEl.innerHTML = '<p class="text-slate-500 py-4 text-center">Nenhuma bebida ou complemento encontrado com este filtro.</p>';
+    function aoDigitarBuscaGlobal(valor) {
+      state.buscaGlobal.termo = valor.trim();
+      const btnLimpar = document.getElementById('btn-limpar-busca-global');
+      if (btnLimpar) {
+        if (state.buscaGlobal.termo) btnLimpar.classList.remove('hidden');
+        else btnLimpar.classList.add('hidden');
+      }
+
+      clearTimeout(state.buscaGlobal.debounceTimer);
+      state.buscaGlobal.debounceTimer = setTimeout(() => {
+        carregarBuscaGlobal();
+      }, 250);
+    }
+
+    function limparInputBuscaGlobal() {
+      const input = document.getElementById('filtro-busca-global-termo');
+      if (input) input.value = '';
+      state.buscaGlobal.termo = '';
+      const btnLimpar = document.getElementById('btn-limpar-busca-global');
+      if (btnLimpar) btnLimpar.classList.add('hidden');
+      carregarBuscaGlobal();
+      if (input) input.focus();
+    }
+
+    function selecionarAbaBuscaGlobal(aba) {
+      state.buscaGlobal.aba = aba;
+
+      const abas = {
+        'TODAS': 'aba-todas',
+        'REFRIGERANTE': 'aba-refri',
+        'CERVEJA': 'aba-cerveja',
+        'COMPLEMENTO': 'aba-complemento',
+        'COMBO': 'aba-combo',
+        'TUDO': 'aba-tudo'
+      };
+
+      for (const [chave, idEl] of Object.entries(abas)) {
+        const el = document.getElementById(idEl);
+        if (!el) continue;
+        if (chave === aba) {
+          el.className = 'px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 bg-blue-900 text-white shadow-sm shrink-0';
+        } else {
+          el.className = 'px-3 py-1.5 rounded-lg font-semibold text-slate-600 hover:bg-slate-100 transition shrink-0';
+        }
+      }
+
+      carregarBuscaGlobal();
+    }
+
+    async function carregarBuscaGlobal() {
+      const listaEl = document.getElementById('lista-resultados-busca-global');
+      listaEl.innerHTML = `
+        <div class="py-10 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
+          <span class="animate-spin text-lg">⏳</span>
+          <span>Buscando no catálogo Takeat...</span>
+        </div>
+      `;
+
+      try {
+        const params = new URLSearchParams();
+        if (state.buscaGlobal.termo) params.set('q', state.buscaGlobal.termo);
+
+        if (state.buscaGlobal.aba === 'TODAS') {
+          params.set('apenasBebidas', 'true');
+        } else if (state.buscaGlobal.aba === 'REFRIGERANTE') {
+          params.set('apenasBebidas', 'true');
+          params.set('categoriaBebida', 'REFRIGERANTE');
+        } else if (state.buscaGlobal.aba === 'CERVEJA') {
+          params.set('apenasBebidas', 'true');
+          params.set('categoriaBebida', 'CERVEJA');
+        } else if (state.buscaGlobal.aba === 'COMPLEMENTO') {
+          params.set('apenasBebidas', 'true');
+          params.set('tipo', 'COMPLEMENTO');
+        } else if (state.buscaGlobal.aba === 'COMBO') {
+          params.set('apenasBebidas', 'true');
+        } else if (state.buscaGlobal.aba === 'TUDO') {
+          params.set('apenasBebidas', 'false');
+        }
+
+        if (state.contagem) {
+          params.set('contagemId', state.contagem.id);
+        }
+
+        const res = await fetch(`/api/takeat/busca-global?${params.toString()}`).then(r => r.json());
+        let itens = res.itens || [];
+
+        if (state.buscaGlobal.aba === 'COMBO') {
+          itens = itens.filter(i => i.subtipo === 'COMBO_COM_BEBIDA');
+        }
+
+        state.buscaGlobal.itens = itens;
+        state.buscaGlobal.resumo = res;
+
+        // Atualiza contadores
+        const contadorTodas = document.getElementById('contador-todas-bebidas');
+        if (contadorTodas) {
+          contadorTodas.textContent = (res.total_bebidas_produtos || 0) + (res.total_bebidas_complementos || 0);
+        }
+
+        renderResultadosBuscaGlobal(itens);
+      } catch (err) {
+        listaEl.innerHTML = `<p class="text-red-500 py-6 text-center">Erro ao buscar catálogo: ${err.message}</p>`;
+      }
+    }
+
+    function renderResultadosBuscaGlobal(itens = state.buscaGlobal.itens || []) {
+      const listaEl = document.getElementById('lista-resultados-busca-global');
+      const totalEl = document.getElementById('total-itens-encontrados');
+      totalEl.textContent = `${itens.length} item(ns) encontrado(s)`;
+
+      if (itens.length === 0) {
+        listaEl.innerHTML = `
+          <div class="py-10 text-center text-slate-400">
+            <i data-lucide="package-search" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+            <p class="font-bold text-slate-600">Nenhum item encontrado</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Tente outro termo ou troque para a aba "Todo o Catálogo".</p>
+          </div>
+        `;
+        lucide.createIcons();
         return;
       }
 
       listaEl.innerHTML = '';
       const nomesNaContagem = new Set((state.contagem?.itens || []).map(i => i.nome_produto.toUpperCase()));
 
-      lista.forEach(b => {
+      itens.forEach(item => {
         const itemDiv = document.createElement('div');
-        itemDiv.className = 'py-2.5 px-3 flex items-center justify-between hover:bg-slate-50 transition gap-2';
+        itemDiv.className = 'py-2.5 px-3 flex items-center justify-between hover:bg-white rounded-lg transition gap-2 border-b border-slate-100 last:border-b-0';
 
-        const jaExiste = nomesNaContagem.has(b.nome.toUpperCase());
-        const tipoBadge = b.tipo === 'PRODUTO' 
-          ? `<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-blue-200">PRODUTO</span>`
-          : `<span class="bg-purple-100 text-purple-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-purple-200">COMPLEMENTO (COMBO)</span>`;
+        const jaExiste = nomesNaContagem.has(item.nome.toUpperCase());
+
+        let tipoBadge = item.tipo === 'PRODUTO'
+          ? `<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-blue-200 shrink-0">PRODUTO</span>`
+          : `<span class="bg-purple-100 text-purple-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-purple-200 shrink-0">OPÇÃO EM COMBO</span>`;
+
+        let tagBebida = '';
+        if (item.subtipo === 'COMBO_COM_BEBIDA') {
+          tagBebida = `<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-200 shrink-0">🍔 COMBO C/ BEBIDA</span>`;
+        } else if (item.is_bebida) {
+          tagBebida = `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">🍹 ${item.categoria_bebida || 'BEBIDA'}</span>`;
+        }
+
+        const precoFmt = item.preco > 0 ? `R$ ${Number(item.preco).toFixed(2)}` : 'Incluso / Opção';
 
         itemDiv.innerHTML = `
-          <div>
-            <div class="flex items-center gap-1.5">
-              <span class="font-bold text-slate-800 uppercase">${b.nome}</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="font-extrabold text-slate-900 uppercase text-xs truncate max-w-md">${item.nome}</span>
               ${tipoBadge}
+              ${tagBebida}
             </div>
-            <p class="text-[11px] text-slate-500 mt-0.5">${b.categoria} &bull; R$ ${Number(b.preco || 0).toFixed(2)}</p>
+            <div class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2">
+              <span class="font-medium text-slate-600">${item.categoria}</span>
+              <span>&bull;</span>
+              <span class="font-bold text-slate-700 font-mono">${precoFmt}</span>
+              ${item.motivo_bebida ? `<span class="text-slate-400 text-[10px]">(${item.motivo_bebida})</span>` : ''}
+            </div>
           </div>
-          <div>
+          <div class="flex items-center gap-1.5 shrink-0">
             ${jaExiste ? `
-              <span class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded border border-emerald-200 flex items-center gap-1">
-                ✓ Na Planilha
+              <span class="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-300 flex items-center gap-1 shadow-sm">
+                <i data-lucide="check" class="w-3 h-3 text-emerald-600"></i> Na Folha
               </span>
             ` : `
-              <button onclick="adicionarBebidaDaTakeat('${b.nome.replace(/'/g, "\\'")}')" class="text-xs font-bold bg-blue-900 hover:bg-blue-800 text-white px-2.5 py-1 rounded shadow transition flex items-center gap-1">
-                <i data-lucide="plus" class="w-3 h-3"></i> Adicionar
+              <button onclick="adicionarItemDaBusca('${item.nome.replace(/'/g, "\\'")}')" class="text-xs font-bold bg-blue-900 hover:bg-blue-800 text-white px-3 py-1 rounded-lg shadow transition flex items-center gap-1">
+                <i data-lucide="plus" class="w-3 h-3"></i> Adicionar à Folha
               </button>
             `}
           </div>
         `;
         listaEl.appendChild(itemDiv);
       });
+
       lucide.createIcons();
     }
 
-    async function adicionarBebidaDaTakeat(nome) {
+    async function adicionarItemDaBusca(nome) {
       if (!state.contagem) return;
       try {
         await fetch('/api/contagem/adicionar-produto', {
@@ -985,11 +1238,41 @@
           body: JSON.stringify({ contagemId: state.contagem.id, nome })
         });
         await carregarContagem(state.contagem.data);
-        renderListaBebidasTakeat(state.catalogoBebidas);
-        showToast(`"${nome}" adicionado à folha!`, 'success');
+        renderResultadosBuscaGlobal();
+        showToast(`Item "${nome.toUpperCase()}" adicionado à folha!`, 'success');
       } catch (e) {
         showToast('Erro ao adicionar item', 'error');
       }
+    }
+
+    async function atualizarCatalogoTakeat() {
+      const btn = document.getElementById('btn-sync-catalogo-modal');
+      const originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<span class="animate-spin mr-1">⏳</span> Sincronizando...`;
+
+      try {
+        await fetch('/api/sync/catalogo', { method: 'POST' });
+        showToast('✓ Catálogo Takeat atualizado com sucesso!', 'success');
+        await carregarBuscaGlobal();
+      } catch (e) {
+        showToast('Erro ao atualizar catálogo: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        lucide.createIcons();
+      }
+    }
+
+    // Aliases para compatibilidade com botões existentes
+    function abrirModalLocalizarBebidas() {
+      abrirModalBuscaGlobal();
+    }
+    function fecharModalLocalizarBebidas() {
+      fecharModalBuscaGlobal();
+    }
+    function adicionarBebidaDaTakeat(nome) {
+      adicionarItemDaBusca(nome);
     }
 
     // Modal de Vínculos Específicos

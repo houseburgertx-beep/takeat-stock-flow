@@ -28,6 +28,7 @@ import {
   removerProdutoContagem,
   listarHistoricoContagens,
   getBebidasTakeatCatalog,
+  buscaGlobalCatalogo,
   vincularItensTakeat,
 } from '../db/database.ts';
 import { TakeatClient } from '../takeat/client.ts';
@@ -307,6 +308,43 @@ export function createWebServer(db: DatabaseSync, client: TakeatClient) {
       if (pathname === '/api/contagem/historico' && req.method === 'GET') {
         const hist = listarHistoricoContagens(db);
         return sendJson(200, hist);
+      }
+
+      // Busca Global no Catálogo Takeat (Produtos e Complementos) com detecção de bebidas
+      if (pathname === '/api/takeat/busca-global' && req.method === 'GET') {
+        const termo = parsedUrl.searchParams.get('q') || parsedUrl.searchParams.get('termo') || undefined;
+        const tipo = (parsedUrl.searchParams.get('tipo') as any) || 'TODOS';
+        const apenasBebidas = parsedUrl.searchParams.get('apenasBebidas') !== 'false';
+        const categoriaBebida = parsedUrl.searchParams.get('categoriaBebida') || undefined;
+        const contagemId = parsedUrl.searchParams.get('contagemId') ? Number(parsedUrl.searchParams.get('contagemId')) : undefined;
+
+        // Se o catálogo estiver vazio e tiver API Key configurada, sincroniza primeiro
+        const prods = getAllProdutos(db);
+        if (prods.length === 0 && process.env.TAKEAT_API_KEY && process.env.TAKEAT_API_KEY !== 'tk_test_seu_token_aqui') {
+          try {
+            await syncService.syncCatalogo();
+          } catch (e) {}
+        }
+
+        const resultados = buscaGlobalCatalogo(db, {
+          termo,
+          tipo,
+          apenasBebidas,
+          categoriaBebida,
+          contagemId
+        });
+
+        const totalBebidasProdutos = resultados.filter(r => r.is_bebida && r.tipo === 'PRODUTO' && r.subtipo === 'BEBIDA').length;
+        const totalBebidasComplementos = resultados.filter(r => r.is_bebida && r.tipo === 'COMPLEMENTO').length;
+        const totalCombosBebida = resultados.filter(r => r.subtipo === 'COMBO_COM_BEBIDA').length;
+
+        return sendJson(200, {
+          total: resultados.length,
+          total_bebidas_produtos: totalBebidasProdutos,
+          total_bebidas_complementos: totalBebidasComplementos,
+          total_combos_bebida: totalCombosBebida,
+          itens: resultados
+        });
       }
 
       // Lista todas as bebidas identificadas no catálogo Takeat (Produtos e Complementos)
