@@ -92,3 +92,32 @@ test('Contagem: importarBebidasCardapioTakeat importa catálogo e configura vín
   assert.ok(vinculos.includes('REFRI MINI 200ML') || vinculos.includes('X-tudo + refri mini 200ml'));
 });
 
+test('Contagem: itens inativos (ativo = 0) ou fora das categorias não são importados', () => {
+  const db = new DatabaseSync(':memory:');
+  initializeDatabase(db);
+
+  db.prepare(`
+    INSERT INTO produtos (id, nome, categoria_nome, preco, ativo, updated_at) VALUES
+    (201, 'Guarana 1L', 'REFRIGERANTES', 9.99, 1, ''),
+    (202, 'Coca-Cola Lata 350ml', 'REFRIGERANTES', 6.5, 0, ''), -- INATIVO
+    (203, 'Cerveja Heineken 600ml', 'CERVEJAS', 15.0, 0, ''),  -- INATIVO
+    (204, 'X-Bacon Duplo', 'BURGERS', 30.0, 1, '')             -- OUTRA CATEGORIA
+  `).run();
+
+  db.prepare(`
+    INSERT INTO complementos (id, nome, categoria_nome, preco, ativo, updated_at) VALUES
+    (301, 'pepsi lata', 'escolha o refrigerante', 0, 1, ''),
+    (302, 'Bacon Extra', 'adicionais', 5.0, 1, ''),
+    (303, 'pepsi lata zero', 'escolha o refrigerante', 0, 0, '') -- INATIVO
+  `).run();
+
+  const contagem = getOrCreateContagemHoje(db, '2026-10-06');
+  const nomes = contagem.itens.map((i: any) => i.nome_produto);
+
+  assert.ok(nomes.includes('GUARANA 1L'), 'Deve conter Guarana 1L ativo');
+  assert.ok(nomes.includes('PEPSI LATA 350ML'), 'Deve conter Pepsi Lata pelo complemento ativo');
+  assert.ok(!nomes.includes('COCA COLA LATA 350ML'), 'Não deve importar Coca inativa');
+  assert.ok(!nomes.includes('CERVEJA HEINEKEN 600ML'), 'Não deve importar Heineken inativa');
+  assert.ok(!nomes.includes('X-BACON DUPLO'), 'Não deve importar burger');
+});
+

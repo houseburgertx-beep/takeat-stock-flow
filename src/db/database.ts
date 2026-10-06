@@ -800,6 +800,7 @@ export interface ResultadoBuscaCatalogo {
   tipo: 'PRODUTO' | 'COMPLEMENTO';
   categoria: string;
   preco: number;
+  ativo?: boolean;
   is_bebida: boolean;
   subtipo: 'BEBIDA' | 'COMBO_COM_BEBIDA' | 'OUTROS';
   categoria_bebida?: 'REFRIGERANTE' | 'CERVEJA' | 'AGUA' | 'ENERGETICO' | 'OUTRO';
@@ -815,10 +816,16 @@ export function buscaGlobalCatalogo(
     apenasBebidas?: boolean;
     categoriaBebida?: string;
     contagemId?: number;
+    apenasAtivos?: boolean;
   }
 ): ResultadoBuscaCatalogo[] {
-  const produtos = getAllProdutos(db);
-  const complementos = getAllComplementos(db);
+  let produtos = getAllProdutos(db);
+  let complementos = getAllComplementos(db);
+
+  if (options?.apenasAtivos) {
+    produtos = produtos.filter(p => p.ativo === 1);
+    complementos = complementos.filter(c => c.ativo === 1);
+  }
 
   const termo = (options?.termo || '').trim().toLowerCase();
   const filtroTipo = options?.tipo || 'TODOS';
@@ -856,6 +863,7 @@ export function buscaGlobalCatalogo(
         tipo: 'PRODUTO',
         categoria: p.categoria_nome || 'Geral',
         preco: p.preco || 0,
+        ativo: p.ativo === 1,
         is_bebida: classif.isBebida,
         subtipo: classif.subtipo,
         categoria_bebida: classif.categoriaBebida,
@@ -883,6 +891,7 @@ export function buscaGlobalCatalogo(
         tipo: 'COMPLEMENTO',
         categoria: c.categoria_nome || 'Opções',
         preco: c.preco || 0,
+        ativo: c.ativo === 1,
         is_bebida: classif.isBebida,
         subtipo: classif.subtipo,
         categoria_bebida: classif.categoriaBebida,
@@ -923,7 +932,37 @@ export function vincularItensTakeat(db: DatabaseSync, itemId: number, vinculos: 
 }
 
 export function importarBebidasCardapioTakeat(db: DatabaseSync, contagemId: number): any[] {
-  const catalogoBebidas = buscaGlobalCatalogo(db, { apenasBebidas: true });
+  function normalizarTexto(txt: string): string {
+    return (txt || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+  }
+
+  function isExcluido(nome: string, cat: string): boolean {
+    const nLow = (nome || '').toLowerCase();
+    const cLow = (cat || '').toLowerCase();
+    for (const exc of TERMOS_EXCLUSAO_BEBIDAS) {
+      const rx = new RegExp('(^|[^a-z0-9])' + exc + '($|[^a-z0-9])', 'i');
+      if (rx.test(nLow) || rx.test(cLow)) return true;
+    }
+    return false;
+  }
+
+  // 1. APENAS PRODUTOS ATIVOS DAS CATEGORIAS REFRIGERANTES, CERVEJAS E BEBIDAS
+  const prods = getAllProdutos(db).filter(p => {
+    if (p.ativo !== 1) return false;
+    if (isExcluido(p.nome, p.categoria_nome)) return false;
+    const cat = normalizarTexto(p.categoria_nome);
+    return cat.includes('REFRIGERANTE') || cat.includes('CERVEJA') || cat === 'BEBIDAS';
+  });
+
+  // 2. APENAS COMPLEMENTOS ATIVOS COM NOME SIMILAR A REFRIGERANTES E CERVEJAS
+  const comps = getAllComplementos(db).filter(c => {
+    if (c.ativo !== 1) return false;
+    if (isExcluido(c.nome, c.categoria_nome)) return false;
+    const n = normalizarTexto(c.nome);
+    const cat = normalizarTexto(c.categoria_nome);
+    return /PEPSI|GUARANA|REFRI|REFRIGERANTE|SUKITA|H2O|BUDWEISER|CORONA|STELLA|CERVEJA/i.test(n) ||
+           /REFRIGERANTE|CERVEJA|ESCOLHA O REFRIGERANTE/i.test(cat);
+  });
 
   const mapaItens = new Map<string, { nome: string; vinculos: Set<string> }>();
 
@@ -936,26 +975,26 @@ export function importarBebidasCardapioTakeat(db: DatabaseSync, contagemId: numb
     }
   }
 
-  for (const b of catalogoBebidas) {
-    const nomeNorm = b.nome.trim();
-    const nomeUpper = nomeNorm.toUpperCase();
+  for (const p of prods) {
+    const nomeUpper = normalizarTexto(p.nome);
+    const nomeNorm = p.nome.trim();
 
-    if (nomeUpper.includes('REFRI MINI') || nomeUpper.includes('REFRI 200ML') || (nomeUpper.includes('200ML') && nomeUpper.includes('REFRI'))) {
-      registrar('REFRI MINI 200ML', nomeNorm);
-    } else if (nomeUpper.includes('PEPSI') && (nomeUpper.includes('LATA') || nomeUpper.includes('350ML')) && !nomeUpper.includes('BLACK') && !nomeUpper.includes('ZERO')) {
-      registrar('PEPSI LATA 350ML', nomeNorm);
-    } else if (nomeUpper.includes('PEPSI') && (nomeUpper.includes('BLACK') || nomeUpper.includes('ZERO')) && (nomeUpper.includes('LATA') || nomeUpper.includes('350ML'))) {
-      registrar('PEPSI BLACK 350ML', nomeNorm);
-    } else if (nomeUpper.includes('PEPSI') && nomeUpper.includes('1L') && !nomeUpper.includes('BLACK')) {
-      registrar('PEPSI 1L', nomeNorm);
-    } else if (nomeUpper.includes('PEPSI') && nomeUpper.includes('1L') && (nomeUpper.includes('BLACK') || nomeUpper.includes('ZERO'))) {
-      registrar('PEPSI BLACK 1L', nomeNorm);
-    } else if (nomeUpper.includes('GUARANA') || nomeUpper.includes('GUARANÁ')) {
-      if ((nomeUpper.includes('ZERO') || nomeUpper.includes('S/A')) && (nomeUpper.includes('1L') || nomeUpper.includes('1 LT'))) {
+    if (nomeUpper.includes('PEPSI')) {
+      if (nomeUpper.includes('BLACK') && (nomeUpper.includes('1L') || nomeUpper.includes('1 L'))) {
+        registrar('PEPSI BLACK 1L', nomeNorm);
+      } else if (nomeUpper.includes('BLACK') || nomeUpper.includes('ZERO')) {
+        registrar('PEPSI BLACK 350ML', nomeNorm);
+      } else if (nomeUpper.includes('1L') || nomeUpper.includes('1 L')) {
+        registrar('PEPSI 1L', nomeNorm);
+      } else {
+        registrar('PEPSI LATA 350ML', nomeNorm);
+      }
+    } else if (nomeUpper.includes('GUARANA')) {
+      if ((nomeUpper.includes('ZERO') || nomeUpper.includes('S/A')) && (nomeUpper.includes('1L') || nomeUpper.includes('1 L'))) {
         registrar('GUARANÁ ZERO 1L', nomeNorm);
       } else if (nomeUpper.includes('ZERO') || nomeUpper.includes('S/A')) {
         registrar('GUARANA ZERO 350ML', nomeNorm);
-      } else if (nomeUpper.includes('1L') || nomeUpper.includes('1 LT')) {
+      } else if (nomeUpper.includes('1L') || nomeUpper.includes('1 L')) {
         registrar('GUARANA 1L', nomeNorm);
       } else {
         registrar('GUARANA LATA 350ML', nomeNorm);
@@ -965,10 +1004,8 @@ export function importarBebidasCardapioTakeat(db: DatabaseSync, contagemId: numb
         registrar('H2O LIMONETO 350ML LATA', nomeNorm);
       } else if (nomeUpper.includes('LIMONETO')) {
         registrar('H2O LIMONETO 500ML', nomeNorm);
-      } else if (nomeUpper.includes('LIMAO') || nomeUpper.includes('LIMÃO')) {
-        registrar('H2O LIMAO 500ML', nomeNorm);
       } else {
-        registrar(nomeUpper, nomeNorm);
+        registrar('H2O LIMAO 500ML', nomeNorm);
       }
     } else if (nomeUpper.includes('SUKITA')) {
       if (nomeUpper.includes('1L')) {
@@ -978,12 +1015,30 @@ export function importarBebidasCardapioTakeat(db: DatabaseSync, contagemId: numb
       } else {
         registrar('SUKITA LATA LARANJA 350ML', nomeNorm);
       }
-    } else if (nomeUpper.includes('AGUA') || nomeUpper.includes('ÁGUA')) {
+    } else if (nomeUpper.includes('AGUA')) {
       if (nomeUpper.includes('COM GAS') || nomeUpper.includes('C/GAS') || nomeUpper.includes('C/ GÁS')) {
         registrar('AGUA MINERAL COM GAS 500ML', nomeNorm);
       } else {
         registrar('AGUA MINERAL SEM GAS 500ML', nomeNorm);
       }
+    } else if (nomeUpper.includes('BUDWEISER')) {
+      if (nomeUpper.includes('600ML')) registrar('BUDWEISER 600ML', nomeNorm);
+      else registrar('BUDWEISER LONGNECK 330ML', nomeNorm);
+    } else if (nomeUpper.includes('CORONITA')) {
+      registrar('CERVEJA CORONITA 210ML', nomeNorm);
+    } else if (nomeUpper.includes('CORONA')) {
+      registrar('CORONA LONGNECK 330ML', nomeNorm);
+    } else if (nomeUpper.includes('STELLA')) {
+      if (nomeUpper.includes('600ML')) registrar('CERVEJA STELLA ARTOIS 600ML', nomeNorm);
+      else registrar('STELLA ARTOIS 330ML', nomeNorm);
+    } else if (nomeUpper.includes('HEINEKEN')) {
+      registrar('CERVEJA HEINEKEN 600ML', nomeNorm);
+    } else if (nomeUpper.includes('EISENBAHN')) {
+      registrar('CERVEJA EISENBAHN LONG NECK 355ML', nomeNorm);
+    } else if (nomeUpper.includes('CHOPP') || nomeUpper.includes('BRAHMA')) {
+      registrar('CHOPP BRAHMA', nomeNorm);
+    } else if (nomeUpper.includes('BEATS')) {
+      registrar('BEATS SENSES 269ML', nomeNorm);
     } else if (nomeUpper.includes('COCA')) {
       if (nomeUpper.includes('KS')) {
         if (nomeUpper.includes('ZERO')) registrar('COCA COLA KS ZERO', nomeNorm);
@@ -997,25 +1052,38 @@ export function importarBebidasCardapioTakeat(db: DatabaseSync, contagemId: numb
       } else {
         registrar('COCA COLA LATA 350ML', nomeNorm);
       }
-    } else if (nomeUpper.includes('HEINEKEN')) {
-      registrar('CERVEJA HEINEKEN 600ML', nomeNorm);
-    } else if (nomeUpper.includes('BUDWEISER')) {
-      if (nomeUpper.includes('600ML')) registrar('BUDWEISER 600ML', nomeNorm);
-      else registrar('BUDWEISER LONGNECK 330ML', nomeNorm);
-    } else if (nomeUpper.includes('STELLA')) {
-      if (nomeUpper.includes('600ML')) registrar('CERVEJA STELLA ARTOIS 600ML', nomeNorm);
-      else registrar('STELLA ARTOIS 330ML', nomeNorm);
-    } else if (nomeUpper.includes('CORONA') || nomeUpper.includes('CORONITA')) {
-      if (nomeUpper.includes('210ML')) registrar('CERVEJA CORONITA 210ML', nomeNorm);
-      else registrar('CORONA LONGNECK 330ML', nomeNorm);
-    } else if (nomeUpper.includes('EISENBAHN')) {
-      registrar('CERVEJA EISENBAHN LONG NECK 355ML', nomeNorm);
-    } else if (nomeUpper.includes('CHOPP') || nomeUpper.includes('BRAHMA')) {
-      registrar('CHOPP BRAHMA', nomeNorm);
-    } else if (nomeUpper.includes('BEATS')) {
-      registrar('BEATS SENSES 269ML', nomeNorm);
-    } else if (b.subtipo === 'BEBIDA') {
-      registrar(nomeUpper, nomeNorm);
+    } else if (nomeUpper.includes('REFRI MINI') || nomeUpper.includes('200ML')) {
+      registrar('REFRI MINI 200ML', nomeNorm);
+    } else {
+      registrar(p.nome.toUpperCase().trim(), nomeNorm);
+    }
+  }
+
+  // 3. Complementos ativos com nome similar
+  for (const c of comps) {
+    const nomeUpper = normalizarTexto(c.nome);
+    const nomeNorm = c.nome.trim();
+
+    if (nomeUpper.includes('REFRI MINI') || nomeUpper.includes('200ML')) {
+      registrar('REFRI MINI 200ML', nomeNorm);
+    } else if (nomeUpper.includes('PEPSI')) {
+      if (nomeUpper.includes('BLACK') || nomeUpper.includes('ZERO')) {
+        registrar('PEPSI BLACK 350ML', nomeNorm);
+      } else if (nomeUpper.includes('1L')) {
+        registrar('PEPSI 1L', nomeNorm);
+      } else {
+        registrar('PEPSI LATA 350ML', nomeNorm);
+      }
+    } else if (nomeUpper.includes('GUARANA')) {
+      if (nomeUpper.includes('ZERO') || nomeUpper.includes('S/A')) {
+        registrar('GUARANA ZERO 350ML', nomeNorm);
+      } else if (nomeUpper.includes('1L')) {
+        registrar('GUARANA 1L', nomeNorm);
+      } else {
+        registrar('GUARANA LATA 350ML', nomeNorm);
+      }
+    } else if (nomeUpper.includes('REFRIGERANTE LATA')) {
+      registrar('REFRIGERANTE LATA 350ML', nomeNorm);
     }
   }
 
