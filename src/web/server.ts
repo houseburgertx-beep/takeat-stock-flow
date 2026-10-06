@@ -30,6 +30,7 @@ import {
   getBebidasTakeatCatalog,
   buscaGlobalCatalogo,
   vincularItensTakeat,
+  importarBebidasCardapioTakeat,
 } from '../db/database.ts';
 import { TakeatClient } from '../takeat/client.ts';
 import { SyncService } from '../services/sync.ts';
@@ -367,28 +368,71 @@ export function createWebServer(db: DatabaseSync, client: TakeatClient) {
         return sendJson(200, item);
       }
 
+      // Importa bebidas do cardápio Takeat diretamente para a folha de contagem
+      if (pathname === '/api/contagem/importar-cardapio' && req.method === 'POST') {
+        const body = await getBody().catch(() => ({}));
+        const contagemId = Number(body.contagemId);
+        const contagem = db.prepare('SELECT * FROM contagens_diarias WHERE id = ?').get(contagemId) as any;
+        if (!contagem) return sendJson(404, { error: 'Contagem não encontrada' });
+
+        const itens = importarBebidasCardapioTakeat(db, contagemId);
+        return sendJson(200, {
+          success: true,
+          message: `Cardápio importado! ${itens.length} bebidas cadastradas na folha com vínculos automáticos configurados.`,
+          total: itens.length,
+          itens
+        });
+      }
+
       if (pathname === '/api/contagem/sync-takeat' && req.method === 'POST') {
         const body = await getBody().catch(() => ({}));
         const contagemId = Number(body.contagemId);
         const contagem = db.prepare('SELECT * FROM contagens_diarias WHERE id = ?').get(contagemId) as any;
         if (!contagem) return sendJson(404, { error: 'Contagem não encontrada' });
 
-        const startIso = `${contagem.data}T00:00:00.000Z`;
-        const endIso = `${contagem.data}T23:59:59.999Z`;
+        // Turno operacional no Brasil (UTC-3):
+        // Inicia às 06:00 BRT (09:00:00Z) do dia da contagem e vai até 06:00 BRT (09:00:00Z) do dia seguinte
+        const startIso = `${contagem.data}T09:00:00.000Z`;
+        const nextDate = new Date(`${contagem.data}T12:00:00Z`);
+        nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+        const endIso = `${nextDate.toISOString().slice(0, 10)}T09:00:00.000Z`;
+
         const vendasMap = new Map<string, number>();
         let totalProdutosVendidos = 0;
         let totalComplementosVendidos = 0;
 
-        // 1. Tenta buscar direto da API se configurada
+        // 1. Consulta direto da API Takeat
         try {
           if (process.env.TAKEAT_API_KEY && process.env.TAKEAT_API_KEY !== 'tk_test_seu_token_aqui') {
             const sessions = await client.getTableSessions(startIso, endIso);
             for (const session of sessions) {
               if (session.status === 'canceled') continue;
-              for (const order of (session.orders || [])) {
-                if (order.status === 'canceled') continue;
 
-                // 1.1 PRODUTO PRINCIPAL (ex: Cerveja, Coca-Cola)
+              // Coleta pedidos de session.bills[].order_baskets[].orders[] e session.orders[]
+              const ordersList: any[] = [];
+              if (Array.isArray(session.bills)) {
+                for (const bill of session.bills) {
+                  if (Array.isArray(bill.order_baskets)) {
+                    for (const basket of bill.order_baskets) {
+                      if (Array.isArray(basket.orders)) {
+                        for (const o of basket.orders) {
+                          ordersList.push(o);
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              if (Array.isArray(session.orders)) {
+                for (const o of session.orders) {
+                  ordersList.push(o);
+                }
+              }
+
+              for (const order of ordersList) {
+                if (order.canceled_at || order.order_status === 'canceled' || order.status === 'canceled') continue;
+
+                // 1.1 PRODUTO PRINCIPAL (ex: Cerveja, Coca-Cola ou Lanche combo)
                 const prodNome = (order.product?.name || (order as any).product_name || '').toUpperCase().trim();
                 const prodQtd = Number(order.quantity || (order as any).amount || 1);
                 if (prodNome) {
@@ -396,7 +440,7 @@ export function createWebServer(db: DatabaseSync, client: TakeatClient) {
                   totalProdutosVendidos += prodQtd;
                 }
 
-                // 1.2 COMPLEMENTOS / ADICIONAIS DA ORDEM (ex: "Kuat 1L", "Coca Lata" escolhidos dentro de combo)
+                // 1.2 COMPLEMENTOS / ADICIONAIS DA ORDEM (ex: "Refri mini 200ml", "Pepsi lata 350ml")
                 const compCats = order.complement_categories || [];
                 if (Array.isArray(compCats)) {
                   for (const cat of compCats) {
@@ -420,75 +464,106 @@ export function createWebServer(db: DatabaseSync, client: TakeatClient) {
           console.warn('[SyncTakeatContagem] Falha ao consultar sessões da Takeat:', err.message);
         }
 
-        // 2. Busca também dos pedidos locais (PRODUTOS E COMPLEMENTOS)
-        try {
-          const pedidosLocais = db.prepare(`
-            SELECT produto_nome as nome, SUM(quantidade) as total
-            FROM pedidos_processados
-            WHERE DATE(data_pedido) = ?
-            GROUP BY produto_nome
-            UNION ALL
-            SELECT pcp.complemento_nome as nome, SUM(pcp.quantidade) as total
-            FROM pedidos_complementos_processados pcp
-            JOIN pedidos_processados pp ON pp.id = pcp.pedido_processado_id
-            WHERE DATE(pp.data_pedido) = ?
-            GROUP BY pcp.complemento_nome
-          `).all(contagem.data, contagem.data) as any[];
+        // 2. Se a API não retornou registros (ou offline), busca dos pedidos locais processados
+        if (vendasMap.size === 0) {
+          try {
+            const pedidosLocais = db.prepare(`
+              SELECT produto_nome as nome, SUM(quantidade) as total
+              FROM pedidos_processados
+              WHERE data_pedido >= ? AND data_pedido <= ?
+              GROUP BY produto_nome
+              UNION ALL
+              SELECT pcp.complemento_nome as nome, SUM(pcp.quantidade) as total
+              FROM pedidos_complementos_processados pcp
+              JOIN pedidos_processados pp ON pp.id = pcp.pedido_processado_id
+              WHERE pp.data_pedido >= ? AND pp.data_pedido <= ?
+              GROUP BY pcp.complemento_nome
+            `).all(startIso, endIso, startIso, endIso) as any[];
 
-          for (const p of pedidosLocais) {
-            const nomeNorm = (p.nome || '').toUpperCase().trim();
-            if (nomeNorm && !vendasMap.has(nomeNorm)) {
-              vendasMap.set(nomeNorm, p.total);
+            for (const p of pedidosLocais) {
+              const nomeUpper = (p.nome || '').toUpperCase().trim();
+              if (nomeUpper) {
+                vendasMap.set(nomeUpper, (vendasMap.get(nomeUpper) || 0) + p.total);
+              }
             }
-          }
-        } catch(e) {}
+          } catch(e) {}
+        }
+
+        // Função de normalização para casamento inteligente
+        function normalizarTexto(txt: string): string {
+          return txt
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/S\/\s*G[AÁ]S/gi, 'SEM GAS')
+            .replace(/C\/\s*G[AÁ]S/gi, 'COM GAS')
+            .replace(/S\/\s*A\b/gi, 'SEM ACUCAR')
+            .replace(/LONG\s*NECK/gi, 'LONGNECK')
+            .toUpperCase()
+            .trim();
+        }
 
         // 3. Atualiza os itens da contagem
         const itens = db.prepare('SELECT * FROM contagem_itens WHERE contagem_id = ?').all(contagemId) as any[];
         let atualizados = 0;
+        let totalVendasConciliadas = 0;
+        const detalhesAtualizados: Array<{ nome: string; vendas: number; fontes: string[] }> = [];
 
         for (const item of itens) {
-          const itemNome = item.nome_produto.toUpperCase().trim();
-          let matchQtd = 0;
-
-          // Vínculos explícitos definidos pelo usuário
+          const itemNorm = normalizarTexto(item.nome_produto);
           let vinculos: string[] = [];
           try {
             vinculos = JSON.parse(item.vinculos_takeat || '[]');
           } catch(e) {}
-          const vinculosUpper = vinculos.map(v => v.toUpperCase().trim());
+          const vinculosNorm = vinculos.map(v => normalizarTexto(v));
+
+          let matchQtd = 0;
+          const fontes: string[] = [];
 
           for (const [vendaNome, qtd] of vendasMap.entries()) {
+            const vNorm = normalizarTexto(vendaNome);
+
             // A) Vínculo explícito cadastrado
-            if (vinculosUpper.includes(vendaNome)) {
+            if (vinculosNorm.includes(vNorm)) {
               matchQtd += qtd;
+              fontes.push(`${qtd}x via vínculo "${vendaNome}"`);
               continue;
             }
 
             // B) Nome exatamente igual
-            if (vendaNome === itemNome) {
+            if (vNorm === itemNorm) {
               matchQtd += qtd;
+              fontes.push(`${qtd}x via nome exato`);
               continue;
             }
 
-            // C) Similaridade inteligente (ex: "KUAT 1L" em "REFRIGERANTE KUAT 1L" ou "KUAT 1 LITRO")
-            const itemBase = itemNome.replace(/[^A-Z0-9]/g, '');
-            const vendaBase = vendaNome.replace(/[^A-Z0-9]/g, '');
-            if (itemBase.length >= 4 && (vendaBase === itemBase || vendaBase.includes(itemBase) || itemBase.includes(vendaBase))) {
+            // C) Similaridade inteligente (ex: "KUAT 1L" em "REFRIGERANTE KUAT 1L")
+            const itemBase = itemNorm.replace(/[^A-Z0-9]/g, '');
+            const vendaBase = vNorm.replace(/[^A-Z0-9]/g, '');
+            if (itemBase.length >= 6 && (vendaBase === itemBase || vendaBase.includes(itemBase) || itemBase.includes(vendaBase))) {
               matchQtd += qtd;
+              fontes.push(`${qtd}x via similaridade inteligente`);
             }
           }
 
           atualizarItemContagem(db, item.id, { venda: matchQtd });
-          if (matchQtd > 0) atualizados++;
+          if (matchQtd > 0) {
+            atualizados++;
+            totalVendasConciliadas += matchQtd;
+            detalhesAtualizados.push({
+              nome: item.nome_produto,
+              vendas: matchQtd,
+              fontes
+            });
+          }
         }
 
         const contagemAtualizada = getOrCreateContagemHoje(db, contagem.data);
         return sendJson(200, {
           success: true,
-          message: `Sincronização concluída! Vendas calculadas de produtos diretos e opções de complementos.`,
-          total_produtos: totalProdutosVendidos,
-          total_complementos: totalComplementosVendidos,
+          message: `Sincronização concluída! ${totalVendasConciliadas} bebidas vendidas contabilizadas no turno.`,
+          total_vendas: totalVendasConciliadas,
+          total_itens_atualizados: atualizados,
+          detalhes: detalhesAtualizados,
           contagem: contagemAtualizada
         });
       }

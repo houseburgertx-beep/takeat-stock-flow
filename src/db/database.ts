@@ -575,32 +575,17 @@ export function getOrCreateContagemHoje(db: DatabaseSync, dataParam?: string): a
 
     const contagemId = Number(res.lastInsertRowid);
 
-    // Inserir itens padrão ou insumos cadastrados
-    const insumosExistentes = getAllInsumos(db);
-    const listaNomes = new Set<string>();
-
-    // Adiciona os itens da planilha
-    ITENS_PADRAO_PLANILHA.forEach(nome => listaNomes.add(nome));
-    // Adiciona bebidas do banco se houver
-    insumosExistentes.filter(i => i.categoria === 'bebida').forEach(i => listaNomes.add(i.nome.toUpperCase()));
-
-    const insertStmt = db.prepare(`
-      INSERT OR IGNORE INTO contagem_itens (contagem_id, nome_produto, pre_venda, entrada_estoque, venda, pos_venda, divergencia, verificado)
-      VALUES (?, ?, ?, 0, 0, ?, 0, 0)
-    `);
-
-    for (const nome of listaNomes) {
-      const preVenda = saldosOntem[nome] ?? (nome === 'KUAT 1L' ? 10 : nome === 'AGUA MINERAL S/GÁS 500ML' ? 25 : 0);
-      const posVenda = saldosOntem[nome] ?? (nome === 'KUAT 1L' ? 5 : nome === 'AGUA MINERAL S/GÁS 500ML' ? 18 : 0);
-      const venda = nome === 'KUAT 1L' ? 5 : nome === 'AGUA MINERAL S/GÁS 500ML' ? 10 : 0;
-      const entrada = nome === 'AGUA MINERAL S/GÁS 500ML' ? 5 : 0;
-      const divergencia = (preVenda + entrada - venda) - posVenda;
-      const verificado = nome === 'KUAT 1L' ? 1 : 0;
-
-      db.prepare(`
-        INSERT OR IGNORE INTO contagem_itens (contagem_id, nome_produto, pre_venda, entrada_estoque, venda, pos_venda, divergencia, verificado)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(contagemId, nome, preVenda, entrada, venda, posVenda, divergencia, verificado);
+    // Se houver catálogo sincronizado, puxa as bebidas reais da Takeat; senão, usa itens padrão
+    const prods = getAllProdutos(db);
+    if (prods.length > 0) {
+      importarBebidasCardapioTakeat(db, contagemId);
+    } else {
+      for (const nome of ITENS_PADRAO_PLANILHA) {
+        db.prepare(`
+          INSERT OR IGNORE INTO contagem_itens (contagem_id, nome_produto, pre_venda, entrada_estoque, venda, pos_venda, divergencia, verificado, vinculos_takeat)
+          VALUES (?, ?, 0, 0, 0, 0, 0, 0, '[]')
+        `).run(contagemId, nome);
+      }
     }
 
     contagem = db.prepare('SELECT * FROM contagens_diarias WHERE id = ?').get(contagemId) as any;
@@ -709,7 +694,8 @@ export const CATEGORIAS_BEBIDAS_TAKET = [
 
 export const TERMOS_EXCLUSAO_BEBIDAS = [
   'drink', 'drinks', 'suco', 'sucos', 'limonada', 'pink lemon', 'caipirinha',
-  'caipicerva', 'gin', 'vodka', 'coquetel', 'ice tea', 'cha', 'chá', 'mate', 'matte'
+  'caipicerva', 'gin', 'vodka', 'coquetel', 'ice tea', 'cha', 'chá', 'mate', 'matte',
+  'soda italiana', 'soda', 'cherry cola'
 ];
 
 export const PALAVRAS_CHAVE_BEBIDAS = [
@@ -934,5 +920,156 @@ export function vincularItensTakeat(db: DatabaseSync, itemId: number, vinculos: 
   const jsonStr = JSON.stringify(vinculos || []);
   db.prepare('UPDATE contagem_itens SET vinculos_takeat = ? WHERE id = ?').run(jsonStr, itemId);
   return db.prepare('SELECT * FROM contagem_itens WHERE id = ?').get(itemId);
+}
+
+export function importarBebidasCardapioTakeat(db: DatabaseSync, contagemId: number): any[] {
+  const catalogoBebidas = buscaGlobalCatalogo(db, { apenasBebidas: true });
+
+  const mapaItens = new Map<string, { nome: string; vinculos: Set<string> }>();
+
+  function registrar(nomePadrao: string, vinculo: string) {
+    if (!mapaItens.has(nomePadrao)) {
+      mapaItens.set(nomePadrao, { nome: nomePadrao, vinculos: new Set() });
+    }
+    if (vinculo && vinculo.trim()) {
+      mapaItens.get(nomePadrao)!.vinculos.add(vinculo.trim());
+    }
+  }
+
+  for (const b of catalogoBebidas) {
+    const nomeNorm = b.nome.trim();
+    const nomeUpper = nomeNorm.toUpperCase();
+
+    if (nomeUpper.includes('REFRI MINI') || nomeUpper.includes('REFRI 200ML') || (nomeUpper.includes('200ML') && nomeUpper.includes('REFRI'))) {
+      registrar('REFRI MINI 200ML', nomeNorm);
+    } else if (nomeUpper.includes('PEPSI') && (nomeUpper.includes('LATA') || nomeUpper.includes('350ML')) && !nomeUpper.includes('BLACK') && !nomeUpper.includes('ZERO')) {
+      registrar('PEPSI LATA 350ML', nomeNorm);
+    } else if (nomeUpper.includes('PEPSI') && (nomeUpper.includes('BLACK') || nomeUpper.includes('ZERO')) && (nomeUpper.includes('LATA') || nomeUpper.includes('350ML'))) {
+      registrar('PEPSI BLACK 350ML', nomeNorm);
+    } else if (nomeUpper.includes('PEPSI') && nomeUpper.includes('1L') && !nomeUpper.includes('BLACK')) {
+      registrar('PEPSI 1L', nomeNorm);
+    } else if (nomeUpper.includes('PEPSI') && nomeUpper.includes('1L') && (nomeUpper.includes('BLACK') || nomeUpper.includes('ZERO'))) {
+      registrar('PEPSI BLACK 1L', nomeNorm);
+    } else if (nomeUpper.includes('GUARANA') || nomeUpper.includes('GUARANÁ')) {
+      if ((nomeUpper.includes('ZERO') || nomeUpper.includes('S/A')) && (nomeUpper.includes('1L') || nomeUpper.includes('1 LT'))) {
+        registrar('GUARANÁ ZERO 1L', nomeNorm);
+      } else if (nomeUpper.includes('ZERO') || nomeUpper.includes('S/A')) {
+        registrar('GUARANA ZERO 350ML', nomeNorm);
+      } else if (nomeUpper.includes('1L') || nomeUpper.includes('1 LT')) {
+        registrar('GUARANA 1L', nomeNorm);
+      } else {
+        registrar('GUARANA LATA 350ML', nomeNorm);
+      }
+    } else if (nomeUpper.includes('H2O') || nomeUpper.includes('H2OH')) {
+      if (nomeUpper.includes('LIMONETO') && (nomeUpper.includes('350ML') || nomeUpper.includes('LATA'))) {
+        registrar('H2O LIMONETO 350ML LATA', nomeNorm);
+      } else if (nomeUpper.includes('LIMONETO')) {
+        registrar('H2O LIMONETO 500ML', nomeNorm);
+      } else if (nomeUpper.includes('LIMAO') || nomeUpper.includes('LIMÃO')) {
+        registrar('H2O LIMAO 500ML', nomeNorm);
+      } else {
+        registrar(nomeUpper, nomeNorm);
+      }
+    } else if (nomeUpper.includes('SUKITA')) {
+      if (nomeUpper.includes('1L')) {
+        registrar('SUKITA LARANJA 1L', nomeNorm);
+      } else if (nomeUpper.includes('UVA')) {
+        registrar('SUKITA LATA UVA 350ML', nomeNorm);
+      } else {
+        registrar('SUKITA LATA LARANJA 350ML', nomeNorm);
+      }
+    } else if (nomeUpper.includes('AGUA') || nomeUpper.includes('ÁGUA')) {
+      if (nomeUpper.includes('COM GAS') || nomeUpper.includes('C/GAS') || nomeUpper.includes('C/ GÁS')) {
+        registrar('AGUA MINERAL COM GAS 500ML', nomeNorm);
+      } else {
+        registrar('AGUA MINERAL SEM GAS 500ML', nomeNorm);
+      }
+    } else if (nomeUpper.includes('COCA')) {
+      if (nomeUpper.includes('KS')) {
+        if (nomeUpper.includes('ZERO')) registrar('COCA COLA KS ZERO', nomeNorm);
+        else registrar('COCA COLA KS', nomeNorm);
+      } else if (nomeUpper.includes('VIDRO 1L') || nomeUpper.includes('1L VIDRO')) {
+        registrar('COCA COLA VIDRO 1L', nomeNorm);
+      } else if (nomeUpper.includes('1L')) {
+        registrar('COCA COLA 1L', nomeNorm);
+      } else if (nomeUpper.includes('ZERO') || nomeUpper.includes('SEM ACUCAR') || nomeUpper.includes('S/A')) {
+        registrar('COCA COLA ZERO 350ML', nomeNorm);
+      } else {
+        registrar('COCA COLA LATA 350ML', nomeNorm);
+      }
+    } else if (nomeUpper.includes('HEINEKEN')) {
+      registrar('CERVEJA HEINEKEN 600ML', nomeNorm);
+    } else if (nomeUpper.includes('BUDWEISER')) {
+      if (nomeUpper.includes('600ML')) registrar('BUDWEISER 600ML', nomeNorm);
+      else registrar('BUDWEISER LONGNECK 330ML', nomeNorm);
+    } else if (nomeUpper.includes('STELLA')) {
+      if (nomeUpper.includes('600ML')) registrar('CERVEJA STELLA ARTOIS 600ML', nomeNorm);
+      else registrar('STELLA ARTOIS 330ML', nomeNorm);
+    } else if (nomeUpper.includes('CORONA') || nomeUpper.includes('CORONITA')) {
+      if (nomeUpper.includes('210ML')) registrar('CERVEJA CORONITA 210ML', nomeNorm);
+      else registrar('CORONA LONGNECK 330ML', nomeNorm);
+    } else if (nomeUpper.includes('EISENBAHN')) {
+      registrar('CERVEJA EISENBAHN LONG NECK 355ML', nomeNorm);
+    } else if (nomeUpper.includes('CHOPP') || nomeUpper.includes('BRAHMA')) {
+      registrar('CHOPP BRAHMA', nomeNorm);
+    } else if (nomeUpper.includes('BEATS')) {
+      registrar('BEATS SENSES 269ML', nomeNorm);
+    } else if (b.subtipo === 'BEBIDA') {
+      registrar(nomeUpper, nomeNorm);
+    }
+  }
+
+  // Vínculos automáticos de combos populares para refrigerantes
+  if (mapaItens.has('REFRI MINI 200ML')) {
+    mapaItens.get('REFRI MINI 200ML')!.vinculos.add('X-tudo + refri mini + fritas pp');
+    mapaItens.get('REFRI MINI 200ML')!.vinculos.add('X-tudo + refri mini 200ml');
+    mapaItens.get('REFRI MINI 200ML')!.vinculos.add('Cheddar Melt + Refri de 200ml');
+    mapaItens.get('REFRI MINI 200ML')!.vinculos.add('American Smash + Refri de 200ml');
+    mapaItens.get('REFRI MINI 200ML')!.vinculos.add('BEBIDA DE 200ml');
+    mapaItens.get('REFRI MINI 200ML')!.vinculos.add('refri mini 200ml');
+    mapaItens.get('REFRI MINI 200ML')!.vinculos.add('REFRI MINI 200ML');
+  }
+
+  // Preserva valores anteriores se o item já existia
+  const itensAtuais = db.prepare('SELECT * FROM contagem_itens WHERE contagem_id = ?').all(contagemId) as any[];
+  const dadosSalvos = new Map<string, any>();
+  for (const it of itensAtuais) {
+    dadosSalvos.set(it.nome_produto.toUpperCase().trim(), it);
+  }
+
+  // Limpa itens antigos da folha
+  db.prepare('DELETE FROM contagem_itens WHERE contagem_id = ?').run(contagemId);
+
+  // Insere os itens consolidados
+  const insertStmt = db.prepare(`
+    INSERT INTO contagem_itens (
+      contagem_id, nome_produto, pre_venda, entrada_estoque, venda, pos_venda, divergencia, verificado, vinculos_takeat
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  for (const [nome, dados] of Array.from(mapaItens.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
+    const salvo = dadosSalvos.get(nome) || {};
+    const preVenda = Number(salvo.pre_venda || 0);
+    const entrada = Number(salvo.entrada_estoque || 0);
+    const venda = Number(salvo.venda || 0);
+    const posVenda = Number(salvo.pos_venda || 0);
+    const divergencia = (preVenda + entrada - venda) - posVenda;
+    const verificado = salvo.verificado ? 1 : 0;
+    const vinculosArray = Array.from(dados.vinculos);
+
+    insertStmt.run(
+      contagemId,
+      nome,
+      preVenda,
+      entrada,
+      venda,
+      posVenda,
+      divergencia,
+      verificado,
+      JSON.stringify(vinculosArray)
+    );
+  }
+
+  return db.prepare('SELECT * FROM contagem_itens WHERE contagem_id = ? ORDER BY nome_produto ASC').all(contagemId);
 }
 

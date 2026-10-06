@@ -85,10 +85,16 @@
         </div>
 
         <div class="flex items-center gap-2">
+          <!-- Puxar Bebidas do Cardápio Takeat -->
+          <button onclick="importarBebidasCardapio()" id="btn-importar-cardapio" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1.5" title="Carrega todas as bebidas reais da Takeat diretamente nesta folha de contagem">
+            <i data-lucide="package-plus" class="w-3.5 h-3.5"></i>
+            <span>Puxar Bebidas Takeat</span>
+          </button>
+
           <!-- Localizar Bebidas e Complementos Takeat -->
           <button onclick="abrirModalBuscaGlobal()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center gap-1.5" title="Busca global e detector de bebidas nos produtos e complementos">
             <i data-lucide="search" class="w-3.5 h-3.5"></i>
-            <span>Busca Global de Bebidas</span>
+            <span>Busca Global</span>
           </button>
 
           <!-- Sincronizar Vendas Takeat -->
@@ -415,6 +421,33 @@
 
       <div class="flex justify-end pt-2 border-t border-slate-200">
         <button onclick="fecharModalHistorico()" class="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: RELATÓRIO DE VENDAS SINCRONIZADAS -->
+  <div id="modal-resumo-vendas" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white text-slate-900 border border-slate-300 rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+          <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i> Relatório de Vendas Sincronizadas
+        </h3>
+        <button onclick="fecharModalResumoVendas()" class="text-slate-400 hover:text-slate-700"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-900">
+        <div class="font-bold text-sm" id="resumo-vendas-titulo">Vendas contabilizadas</div>
+        <div class="text-[11px] text-emerald-700 mt-0.5" id="resumo-vendas-subtitulo">Vendas do turno operacional conciliadas com a Takeat.</div>
+      </div>
+
+      <div class="max-h-80 overflow-y-auto divide-y divide-slate-100 text-xs border border-slate-200 rounded-xl" id="lista-resumo-vendas">
+        <!-- Itens injetados via JS -->
+      </div>
+
+      <div class="flex justify-end pt-2 border-t border-slate-200">
+        <button onclick="fecharModalResumoVendas()" class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition shadow">
+          Fechar
+        </button>
       </div>
     </div>
   </div>
@@ -871,6 +904,42 @@
     }
 
     // -------------------------------------------------------------
+    // IMPORTAÇÃO DE BEBIDAS DO CARDÁPIO TAKEA T
+    // -------------------------------------------------------------
+    async function importarBebidasCardapio() {
+      if (!state.contagem) return;
+      if (!confirm('Deseja puxar todas as bebidas reais do cardápio Takeat para esta folha de contagem? Os vínculos e nomes serão configurados automaticamente.')) return;
+
+      const btn = document.getElementById('btn-importar-cardapio');
+      const originalText = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="animate-spin mr-1">⏳</span> Puxando Cardápio...`;
+      }
+
+      try {
+        const res = await fetch('/api/contagem/importar-cardapio', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contagemId: state.contagem.id })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Erro ao importar cardápio');
+
+        showToast(data.message || `✓ ${data.total} bebidas importadas com sucesso!`, 'success');
+        await carregarContagem(state.contagem.data);
+      } catch (err) {
+        showToast('Aviso: ' + err.message, 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+          lucide.createIcons();
+        }
+      }
+    }
+
+    // -------------------------------------------------------------
     // SINCRONIZAÇÃO DE VENDAS TAKEA T
     // -------------------------------------------------------------
     async function sincronizarVendasTakeat() {
@@ -890,8 +959,13 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Erro ao sincronizar');
 
-        showToast(data.message || '✓ Vendas sincronizadas com sucesso!', 'success');
         await carregarContagem(state.contagem.data);
+
+        if (data.detalhes && data.detalhes.length > 0) {
+          exibirModalResumoVendas(data);
+        } else {
+          showToast(data.message || '✓ Vendas sincronizadas com sucesso!', 'success');
+        }
       } catch (err) {
         showToast('Aviso: ' + err.message, 'error');
         if (err.message.includes('401') || err.message.includes('invalid_client')) {
@@ -902,6 +976,52 @@
         btn.innerHTML = originalText;
         lucide.createIcons();
       }
+    }
+
+    function exibirModalResumoVendas(data) {
+      const modal = document.getElementById('modal-resumo-vendas');
+      if (!modal) return;
+
+      const titulo = document.getElementById('resumo-vendas-titulo');
+      const subtitulo = document.getElementById('resumo-vendas-subtitulo');
+      const lista = document.getElementById('lista-resumo-vendas');
+
+      if (titulo) {
+        titulo.innerText = `${data.total_vendas || 0} bebidas vendidas contabilizadas`;
+      }
+      if (subtitulo) {
+        subtitulo.innerText = `${data.total_itens_atualizados || 0} itens da folha tiveram movimentações no turno da Takeat.`;
+      }
+
+      if (lista) {
+        if (!data.detalhes || data.detalhes.length === 0) {
+          lista.innerHTML = `<div class="p-4 text-center text-slate-400">Nenhuma venda registrada para os itens vinculados neste turno.</div>`;
+        } else {
+          lista.innerHTML = data.detalhes.map(d => `
+            <div class="p-2.5 flex items-start justify-between gap-3 hover:bg-slate-50 transition">
+              <div>
+                <div class="font-bold text-slate-800 text-xs">${d.nome}</div>
+                ${d.fontes && d.fontes.length > 0 ? `
+                  <div class="text-[10px] text-slate-500 mt-0.5 space-y-0.5">
+                    ${d.fontes.map(f => `<div>• ${f}</div>`).join('')}
+                  </div>
+                ` : ''}
+              </div>
+              <div class="font-black text-blue-900 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded text-xs shrink-0">
+                ${d.vendas} un
+              </div>
+            </div>
+          `).join('');
+        }
+      }
+
+      modal.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function fecharModalResumoVendas() {
+      const modal = document.getElementById('modal-resumo-vendas');
+      if (modal) modal.classList.add('hidden');
     }
 
     // -------------------------------------------------------------
